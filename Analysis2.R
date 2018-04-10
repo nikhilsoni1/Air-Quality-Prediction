@@ -73,4 +73,3 @@ rm(rows)
 df$GC<-as.numeric(df$GC)
 model1<-gam(PM2.5~., data=df.train)
 summary(model1)
-model12
