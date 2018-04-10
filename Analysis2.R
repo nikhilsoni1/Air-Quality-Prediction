@@ -1,6 +1,7 @@
 # header----
 getwd()
 setwd("/home/shah398/R project")
+setwd("~/Harmanik")
 load("~/Google Drive/Purdue University/Academics/Sem-2/PredModel/Project/Analysis/Analysis 2/Analysis2.RData")
 save(list=ls(all=T),file='Analysis2.RData')
 
