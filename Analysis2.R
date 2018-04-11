@@ -1,9 +1,11 @@
 # header----
-getwd()
-setwd("/home/shah398/R project")
-setwd("~/Harmanik")
-load("~/Harmanik/Analysis2.RData")
 save(list=ls(all=T),file='Analysis2.RData')
+
+wd<-dirname(rstudioapi::getSourceEditorContext()$path)
+setwd(wd)
+load(paste0(wd, '/Analysis2.Rdata'))
+rm(wd)
+
 
 install.packages('gam')
 library(gam)
