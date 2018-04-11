@@ -204,8 +204,8 @@ rows<-sample(1:nrow(df), 0.80*nrow(df), replace=FALSE)
 df.train<-df[rows,]
 df.test<-df[-rows,]
 rm(rows)
-# linear model----
+# EDA----
 
-df$GC<-as.numeric(df$GC)
-model1<-gam(PM2.5~., data=df.train)
-summary(model1)
+##  Scatterplot
+
+
