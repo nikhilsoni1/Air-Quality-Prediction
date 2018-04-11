@@ -68,12 +68,12 @@ crossValidate<-function(cvtype,folds,dataset,model,resp)
 # data----
 
 # AOT Data and processing (1)
-df.aot<-read.csv('/home/sonin/Harmanik/AOT.csv')
+df.aot<-read.csv('/home/shah398/Harmanik/AOT.csv')
 df.aot$Date<-as.character(df.aot$Date)
 df.aot$Date<-as.Date(df.aot$Date, format='%m/%d/%Y')
 
 # Environmental variables data and processing  (2)
-df.init<-read.csv('/home/sonin/Harmanik/EnvVar.csv')
+df.init<-read.csv('/home/shah398/Harmanik/EnvVar.csv')
 df.store<-df.init[,-2]
 colnames(df.store)[1]<-'Date'
 colnames(df.store)[2]<-'Station'
@@ -84,7 +84,7 @@ df<-merge(df.store, df.aot, by=c('Date', 'Station'), all.x = TRUE)  # (3) -> Mer
 df<-df[,-c(9, 11, 12, 13, 14, 15, 16, 18, 19, 20)]
 
 # Additional temperature data and processing  (4)
-df.temp<-read.csv('//home/sonin/Harmanik/TemperatureData.csv')
+df.temp<-read.csv('//home/shah398/Harmanik/TemperatureData.csv')
 df.temp$Date<-as.character(df.temp$Date)
 df.temp$Date<-as.Date(df.temp$Date, format='%m/%d/%y')
 df<-merge(df, df.temp, by='Date', all.x=T)  # (5) -> Merging (3) & (4)
@@ -203,12 +203,65 @@ temp$Events<-as.factor(as.numeric(temp$Events))
 df<-temp
 
 
-##EDA
+
+
+
+#EDA\
+
+
 featurePlot(x=df.train[,-c('PM2.5')],y=df$PM2.5,plot="pairs")
 
-M <- cor()
 
 
+
+
+
+completeness(df)
+
+
+
+##Scatterplot matrix
+panel.cor <- function(x, y, digits = 2, cex.cor, ...)
+{
+  usr <- par("usr"); on.exit(par(usr))
+  par(usr = c(0, 1, 0, 1))
+  # correlation coefficient
+  r <- cor(x, y)
+  txt <- format(c(r, 0.123456789), digits = digits)[1]
+  txt <- paste("r= ", txt, sep = "")
+  text(0.5, 0.6, txt)
+  
+  # p-value calculation
+  p <- cor.test(x, y)$p.value
+  txt2 <- format(c(p, 0.123456789), digits = digits)[1]
+  txt2 <- paste("p= ", txt2, sep = "")
+  if(p<0.01) txt2 <- paste("p= ", "<0.01", sep = "")
+  text(0.5, 0.4, txt2)
+}
+
+pairs(df, upper.panel = panel.cor)
+
+##Violin plot
+install.packages("devtools")
+library("devtools")
+install_github("easyGgplot2","kassambara")
+library(easyGgplot2)
+library(ggplot2)
+
+
+#GC
+p<-ggplot(df, aes(factor(GC),PM2.5))
+p+geom_violin(scale = "count",adjust = 0.8, aes(fill = GC))+
+  stat_summary(fun.y = "mean", geom = "point", shape = 4, size = 3, color = "midnightblue") +
+  stat_summary(fun.y = "median", geom = "point", shape = 10, size = 3, color = "red")
+
+#Events
+p<-ggplot(df, aes(Events,PM2.5))
+p+geom_violin(scale = "count",adjust = 0.8,aes(fill = Events))
+
+#Stations
+p<-ggplot(df, aes(Station,PM2.5))
+p+geom_violin(scale = "count",adjust = 0.8,aes(fill = Station))
 
 
 
