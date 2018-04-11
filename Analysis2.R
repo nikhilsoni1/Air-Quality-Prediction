@@ -224,6 +224,8 @@ library(ggfortify)
 # plot(pca,type="l")
 # summary(pca)
 
+
+
 ## Biplot
 autoplot(prcomp(temppca2),data=temppca,colour="Station",loadings=TRUE,loadings.label=TRUE,loading.label.size=3)
 
