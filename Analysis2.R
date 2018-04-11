@@ -204,13 +204,33 @@ df<-temp
 
 
 ##EDA
-featurePlot(x=df.train[,-c('PM2.5')],y=df$PM2.5,plot="pairs")
+install.package('devtools')
+library(devtools)
+## Cor plot between all numeric variables and using only the complete values
+M <- cor(df[,-c(1,2,14,15)],use="complete.obs")
+corrplot(M)
 
-M <- cor()
+## we see that AT is highly correlated to TempN and Humidity is highly correlated to AT. 
+summary(is.na(prdtion))
+install_github("ggbiplot","vqv")
+library(ggbiplot)
+prctd <- df$PM2.5
+prdtion <- df
+temppca <- na.omit(prdtion)
+temppca2 <- temppca[,-c(1,2,9,14,15)]
+install.package('ggfortify')
+library(ggfortify)
+# pca <- prcomp(temppca2,center=TRUE,scale.=TRUE)
+# plot(pca,type="l")
+# summary(pca)
 
+## Biplot
+autoplot(prcomp(temppca2),data=temppca,colour="Station",loadings=TRUE,loadings.label=TRUE,loading.label.size=3)
 
-
-
+## Variable plot
+pca <- prcomp(temppca2,center=TRUE,scale.=TRUE)
+plot(pca,type="l")
+summary(pca)
 
 set.seed(9)
 rows<-sample(1:nrow(df), 0.80*nrow(df), replace=FALSE)
