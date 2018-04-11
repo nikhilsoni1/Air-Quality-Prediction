@@ -220,9 +220,9 @@ temppca <- na.omit(prdtion)
 temppca2 <- temppca[,-c(1,2,9,14,15)]
 install.package('ggfortify')
 library(ggfortify)
-# pca <- prcomp(temppca2,center=TRUE,scale.=TRUE)
-# plot(pca,type="l")
-# summary(pca)
+pca <- prcomp(temppca2,center=TRUE,scale.=TRUE)
+plot(pca,type="l")
+summary(pca)
 
 
 
@@ -233,6 +233,68 @@ autoplot(prcomp(temppca2),data=temppca,colour="Station",loadings=TRUE,loadings.l
 pca <- prcomp(temppca2,center=TRUE,scale.=TRUE)
 plot(pca,type="l")
 summary(pca)
+
+
+
+#EDA\
+
+
+featurePlot(x=df.train[,-c('PM2.5')],y=df$PM2.5,plot="pairs")
+
+
+
+
+
+
+completeness(df)
+
+
+
+##Scatterplot matrix
+panel.cor <- function(x, y, digits = 2, cex.cor, ...)
+{
+  usr <- par("usr"); on.exit(par(usr))
+  par(usr = c(0, 1, 0, 1))
+  # correlation coefficient
+  r <- cor(x, y)
+  txt <- format(c(r, 0.123456789), digits = digits)[1]
+  txt <- paste("r= ", txt, sep = "")
+  text(0.5, 0.6, txt)
+  
+  # p-value calculation
+  p <- cor.test(x, y)$p.value
+  txt2 <- format(c(p, 0.123456789), digits = digits)[1]
+  txt2 <- paste("p= ", txt2, sep = "")
+  if(p<0.01) txt2 <- paste("p= ", "<0.01", sep = "")
+  text(0.5, 0.4, txt2)
+}
+
+pairs(df, upper.panel = panel.cor)
+
+##Violin plot
+install.packages("devtools")
+library("devtools")
+install_github("easyGgplot2","kassambara")
+library(easyGgplot2)
+library(ggplot2)
+
+
+#GC
+p<-ggplot(df, aes(factor(GC),PM2.5))
+p+geom_violin(scale = "count",adjust = 0.8, aes(fill = GC))+
+  stat_summary(fun.y = "mean", geom = "point", shape = 4, size = 3, color = "midnightblue") +
+  stat_summary(fun.y = "median", geom = "point", shape = 10, size = 3, color = "red")
+
+#Events
+p<-ggplot(df, aes(Events,PM2.5))
+p+geom_violin(scale = "count",adjust = 0.8,aes(fill = Events))
+
+#Stations
+p<-ggplot(df, aes(Station,PM2.5))
+p+geom_violin(scale = "count",adjust = 0.8,aes(fill = Station))
+
+
+>>>>>>> 81b5d34428eda008f45ce627e1f24fdc928d3e73
 
 set.seed(9)
 rows<-sample(1:nrow(df), 0.80*nrow(df), replace=FALSE)
