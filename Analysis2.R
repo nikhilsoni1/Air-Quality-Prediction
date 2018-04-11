@@ -6,7 +6,9 @@ setwd(wd)
 load(paste0(wd, '/Analysis2.Rdata'))
 rm(wd)
 
-
+library(ggplot2)
+install.packages('caret')
+library(caret)
 install.packages('gam')
 library(gam)
 install.packages('rJava')
@@ -17,7 +19,8 @@ install.packages('ModelMetrics')
 library(ModelMetrics)
 install.packages('stats')
 library(stats)
-
+library(corrplot)
+library(Hmisc)
 # functions----
 
 completeness<-function(dat)
@@ -199,11 +202,25 @@ df<-temp
 temp$Events<-as.factor(as.numeric(temp$Events))
 df<-temp
 
+
+##EDA
+featurePlot(x=df.train[,-c('PM2.5')],y=df$PM2.5,plot="pairs")
+
+M <- cor()
+
+
+
+
+
 set.seed(9)
 rows<-sample(1:nrow(df), 0.80*nrow(df), replace=FALSE)
 df.train<-df[rows,]
 df.test<-df[-rows,]
 rm(rows)
+
+
+
+
 # linear model----
 
 df$GC<-as.numeric(df$GC)
