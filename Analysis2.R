@@ -1,5 +1,5 @@
 # header----
-save(list=ls(all=T),file='Analysis2.RData')
+#save(list=ls(all=T),file='Analysis2.RData')
 
 wd<-dirname(rstudioapi::getSourceEditorContext()$path)
 setwd(wd)
@@ -279,3 +279,47 @@ rm(rows)
 df$GC<-as.numeric(df$GC)
 model1<-gam(PM2.5~., data=df.train)
 summary(model1)
+
+
+#Models---------------------------------------------------
+##GLM
+
+
+##GAM
+
+
+##CART
+
+
+##RandomForest
+
+
+##BART
+options(java.parameters = "-Xmx25g")
+library('bartMachine')
+#library('rJava')
+set_bart_machine_num_cores(20)
+
+Y<-df$PM2.5
+X<-df[,-c(1,9)]
+
+
+
+
+
+bartModel <- bartMachine(X, Y, use_missing_data = TRUE,serialize = T)
+summary(bartModel)
+
+rmse_kfold<-k_fold_cv(X, Y, k_folds = 10, use_missing_data = TRUE)
+
+bart_machine_cv <- bartMachineCV(X, Y,use_missing_data = TRUE,serialize = T)
+
+investigate_var_importance(bartModel, num_replicates_for_avg = 20)
+
+plot_y_vs_yhat(bart_machine_cv, credible_intervals = TRUE)
+plot_y_vs_yhat(bart_machine_cv, prediction_intervals = TRUE)
+
+##SVM
+
+
+##NeuralNet
