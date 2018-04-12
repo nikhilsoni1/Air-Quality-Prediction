@@ -206,6 +206,8 @@ df.test<-df[-rows,]
 rm(rows)
 # EDA----
 
-##  Scatterplot
+# BART----
+options(java.parameters = '-Xmx12g')
+fart<-bartMachine(df[,-c(1,9)],df[,9], use_missing_data = TRUE)
 
 
