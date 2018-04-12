@@ -1,5 +1,5 @@
 # header----
-save(list=ls(all=T),file='Analysis2.RData')
+#save(list=ls(all=T),file='Analysis2.RData')
 
 wd<-dirname(rstudioapi::getSourceEditorContext()$path)
 setwd(wd)
@@ -293,6 +293,9 @@ df.train<-df[rows,]
 df.test<-df[-rows,]
 rm(rows)
 
+# EDA----
+
+
 
 
 
@@ -301,3 +304,70 @@ rm(rows)
 df$GC<-as.numeric(df$GC)
 model1<-gam(PM2.5~., data=df.train)
 summary(model1)
+
+
+#Models---------------------------------------------------
+##GLM
+
+
+##GAM
+
+
+##CART
+
+
+##RandomForest
+library(foreach)
+library(randomForest)
+temp <- na.omit(temp)
+temp$knum<-sample(1:10,nrow(temp),replace = TRUE)
+temp.train <- temp[!temp$knum==i,-c("knum")]
+temp.train$knum<- sample(1:10,nrow(temp.train),replace = TRUE)
+rmse_kfold<-0
+for (i in 1:folds)
+{
+  df.test<-temp.train[temp.train$knum==i,]
+  df.train<-temp.train[!temp.train$knum==i,]
+  pred<-predict(model,df.test)
+  pred[is.na(pred)]<-mean(pred,na.rm = T)
+  rmse_kfold<-cbind(rmse_kfold,rmse(df.test[,resp],pred))
+}
+sample <- 
+x <- temp[,-c(1,9)]
+y<-temp[,9]
+library(foreach)
+library(randomForest)
+rf <- foreach(ntree=rep(250,4), .combine=combine,.packages = 'randomForest') %dopar% randomForest(x,y,ntree=ntree,na.action=na.omit)
+?randomForest
+rf
+
+
+##BART
+options(java.parameters = "-Xmx25g")
+library('bartMachine')
+#library('rJava')
+set_bart_machine_num_cores(20)
+
+Y<-df$PM2.5
+X<-df[,-c(1,9)]
+
+
+
+
+
+bartModel <- bartMachine(X, Y, use_missing_data = TRUE,serialize = T)
+summary(bartModel)
+
+rmse_kfold<-k_fold_cv(X, Y, k_folds = 10, use_missing_data = TRUE)
+
+bart_machine_cv <- bartMachineCV(X, Y,use_missing_data = TRUE,serialize = T)
+
+investigate_var_importance(bartModel, num_replicates_for_avg = 20)
+
+plot_y_vs_yhat(bart_machine_cv, credible_intervals = TRUE)
+plot_y_vs_yhat(bart_machine_cv, prediction_intervals = TRUE)
+
+##SVM
+
+
+##NeuralNet
