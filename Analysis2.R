@@ -270,15 +270,9 @@ rows<-sample(1:nrow(df), 0.80*nrow(df), replace=FALSE)
 df.train<-df[rows,]
 df.test<-df[-rows,]
 rm(rows)
-<<<<<<< HEAD
+
 # EDA----
 
-# BART----
-options(java.parameters = '-Xmx12g')
-fart<-bartMachine(df[,-c(1,9)],df[,9], use_missing_data = TRUE)
-
-
-=======
 
 
 
@@ -332,4 +326,3 @@ plot_y_vs_yhat(bart_machine_cv, prediction_intervals = TRUE)
 
 
 ##NeuralNet
->>>>>>> 0cc9dd5d4929e48776e222d11b33b75e76e6e74a
