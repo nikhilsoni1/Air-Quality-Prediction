@@ -1,12 +1,14 @@
 # header----
-save(list=ls(all=T),file='Analysis2.RData')
+#save(list=ls(all=T),file='Analysis2.RData')
 
 wd<-dirname(rstudioapi::getSourceEditorContext()$path)
 setwd(wd)
 load(paste0(wd, '/Analysis2.Rdata'))
 rm(wd)
 
-
+library(ggplot2)
+install.packages('caret')
+library(caret)
 install.packages('gam')
 library(gam)
 install.packages('rJava')
@@ -17,7 +19,8 @@ install.packages('ModelMetrics')
 library(ModelMetrics)
 install.packages('stats')
 library(stats)
-
+library(corrplot)
+library(Hmisc)
 # functions----
 
 completeness<-function(dat)
@@ -65,12 +68,12 @@ crossValidate<-function(cvtype,folds,dataset,model,resp)
 # data----
 
 # AOT Data and processing (1)
-df.aot<-read.csv('/home/sonin/Harmanik/AOT.csv')
+df.aot<-read.csv('/home/shah398/Harmanik/AOT.csv')
 df.aot$Date<-as.character(df.aot$Date)
 df.aot$Date<-as.Date(df.aot$Date, format='%m/%d/%Y')
 
 # Environmental variables data and processing  (2)
-df.init<-read.csv('/home/sonin/Harmanik/EnvVar.csv')
+df.init<-read.csv('/home/shah398/Harmanik/EnvVar.csv')
 df.store<-df.init[,-2]
 colnames(df.store)[1]<-'Date'
 colnames(df.store)[2]<-'Station'
@@ -81,7 +84,7 @@ df<-merge(df.store, df.aot, by=c('Date', 'Station'), all.x = TRUE)  # (3) -> Mer
 df<-df[,-c(9, 11, 12, 13, 14, 15, 16, 18, 19, 20)]
 
 # Additional temperature data and processing  (4)
-df.temp<-read.csv('//home/sonin/Harmanik/TemperatureData.csv')
+df.temp<-read.csv('//home/shah398/Harmanik/TemperatureData.csv')
 df.temp$Date<-as.character(df.temp$Date)
 df.temp$Date<-as.Date(df.temp$Date, format='%m/%d/%y')
 df<-merge(df, df.temp, by='Date', all.x=T)  # (5) -> Merging (3) & (4)
@@ -199,11 +202,75 @@ df<-temp
 temp$Events<-as.factor(as.numeric(temp$Events))
 df<-temp
 
+
+
+
+
+#EDA\
+
+
+featurePlot(x=df.train[,-c('PM2.5')],y=df$PM2.5,plot="pairs")
+
+
+
+
+
+
+completeness(df)
+
+
+
+##Scatterplot matrix
+panel.cor <- function(x, y, digits = 2, cex.cor, ...)
+{
+  usr <- par("usr"); on.exit(par(usr))
+  par(usr = c(0, 1, 0, 1))
+  # correlation coefficient
+  r <- cor(x, y)
+  txt <- format(c(r, 0.123456789), digits = digits)[1]
+  txt <- paste("r= ", txt, sep = "")
+  text(0.5, 0.6, txt)
+  
+  # p-value calculation
+  p <- cor.test(x, y)$p.value
+  txt2 <- format(c(p, 0.123456789), digits = digits)[1]
+  txt2 <- paste("p= ", txt2, sep = "")
+  if(p<0.01) txt2 <- paste("p= ", "<0.01", sep = "")
+  text(0.5, 0.4, txt2)
+}
+
+pairs(df, upper.panel = panel.cor)
+
+##Violin plot
+install.packages("devtools")
+library("devtools")
+install_github("easyGgplot2","kassambara")
+library(easyGgplot2)
+library(ggplot2)
+
+
+#GC
+p<-ggplot(df, aes(factor(GC),PM2.5))
+p+geom_violin(scale = "count",adjust = 0.8, aes(fill = GC))+
+  stat_summary(fun.y = "mean", geom = "point", shape = 4, size = 3, color = "midnightblue") +
+  stat_summary(fun.y = "median", geom = "point", shape = 10, size = 3, color = "red")
+
+#Events
+p<-ggplot(df, aes(Events,PM2.5))
+p+geom_violin(scale = "count",adjust = 0.8,aes(fill = Events))
+
+#Stations
+p<-ggplot(df, aes(Station,PM2.5))
+p+geom_violin(scale = "count",adjust = 0.8,aes(fill = Station))
+
+
+
 set.seed(9)
 rows<-sample(1:nrow(df), 0.80*nrow(df), replace=FALSE)
 df.train<-df[rows,]
 df.test<-df[-rows,]
 rm(rows)
+<<<<<<< HEAD
 # EDA----
 
 # BART----
@@ -211,3 +278,58 @@ options(java.parameters = '-Xmx12g')
 fart<-bartMachine(df[,-c(1,9)],df[,9], use_missing_data = TRUE)
 
 
+=======
+
+
+
+
+# linear model----
+
+df$GC<-as.numeric(df$GC)
+model1<-gam(PM2.5~., data=df.train)
+summary(model1)
+
+
+#Models---------------------------------------------------
+##GLM
+
+
+##GAM
+
+
+##CART
+
+
+##RandomForest
+
+
+##BART
+options(java.parameters = "-Xmx25g")
+library('bartMachine')
+#library('rJava')
+set_bart_machine_num_cores(20)
+
+Y<-df$PM2.5
+X<-df[,-c(1,9)]
+
+
+
+
+
+bartModel <- bartMachine(X, Y, use_missing_data = TRUE,serialize = T)
+summary(bartModel)
+
+rmse_kfold<-k_fold_cv(X, Y, k_folds = 10, use_missing_data = TRUE)
+
+bart_machine_cv <- bartMachineCV(X, Y,use_missing_data = TRUE,serialize = T)
+
+investigate_var_importance(bartModel, num_replicates_for_avg = 20)
+
+plot_y_vs_yhat(bart_machine_cv, credible_intervals = TRUE)
+plot_y_vs_yhat(bart_machine_cv, prediction_intervals = TRUE)
+
+##SVM
+
+
+##NeuralNet
+>>>>>>> 0cc9dd5d4929e48776e222d11b33b75e76e6e74a
