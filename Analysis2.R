@@ -214,6 +214,8 @@ corrplot(M)
 summary(is.na(prdtion))
 install_github("ggbiplot","vqv")
 library(ggbiplot)
+library(VSURF)
+
 prctd <- df$PM2.5
 prdtion <- df
 temppca <- na.omit(prdtion)
@@ -236,17 +238,6 @@ summary(pca)
 
 
 
-#EDA\
-
-
-featurePlot(x=df.train[,-c('PM2.5')],y=df$PM2.5,plot="pairs")
-
-
-
-
-
-
-completeness(df)
 
 
 
