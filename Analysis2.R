@@ -68,12 +68,12 @@ crossValidate<-function(cvtype,folds,dataset,model,resp)
 # data----
 
 # AOT Data and processing (1)
-df.aot<-read.csv('/home/shah398/Harmanik/AOT.csv')
+df.aot<-read.csv('/home/sonin/Harmanik/AOT.csv')
 df.aot$Date<-as.character(df.aot$Date)
 df.aot$Date<-as.Date(df.aot$Date, format='%m/%d/%Y')
 
 # Environmental variables data and processing  (2)
-df.init<-read.csv('/home/shah398/Harmanik/EnvVar.csv')
+df.init<-read.csv('/home/sonin/Harmanik/EnvVar.csv')
 df.store<-df.init[,-2]
 colnames(df.store)[1]<-'Date'
 colnames(df.store)[2]<-'Station'
@@ -84,7 +84,7 @@ df<-merge(df.store, df.aot, by=c('Date', 'Station'), all.x = TRUE)  # (3) -> Mer
 df<-df[,-c(9, 11, 12, 13, 14, 15, 16, 18, 19, 20)]
 
 # Additional temperature data and processing  (4)
-df.temp<-read.csv('//home/shah398/Harmanik/TemperatureData.csv')
+df.temp<-read.csv('//home/sonin/Harmanik/TemperatureData.csv')
 df.temp$Date<-as.character(df.temp$Date)
 df.temp$Date<-as.Date(df.temp$Date, format='%m/%d/%y')
 df<-merge(df, df.temp, by='Date', all.x=T)  # (5) -> Merging (3) & (4)
@@ -203,20 +203,41 @@ temp$Events<-as.factor(as.numeric(temp$Events))
 df<-temp
 
 
+##EDA
+install.package('devtools')
+library(devtools)
+## Cor plot between all numeric variables and using only the complete values
+M <- cor(df[,-c(1,2,14,15)],use="complete.obs")
+corrplot(M)
+
+## we see that AT is highly correlated to TempN and Humidity is highly correlated to AT. 
+summary(is.na(prdtion))
+install_github("ggbiplot","vqv")
+library(ggbiplot)
+library(VSURF)
+
+prctd <- df$PM2.5
+prdtion <- df
+temppca <- na.omit(prdtion)
+temppca2 <- temppca[,-c(1,2,9,14,15)]
+install.package('ggfortify')
+library(ggfortify)
+pca <- prcomp(temppca2,center=TRUE,scale.=TRUE)
+plot(pca,type="l")
+summary(pca)
 
 
 
-#EDA\
+## Biplot
+autoplot(prcomp(temppca2),data=temppca,colour="Station",loadings=TRUE,loadings.label=TRUE,loading.label.size=3)
+
+## Variable plot
+pca <- prcomp(temppca2,center=TRUE,scale.=TRUE)
+plot(pca,type="l")
+summary(pca)
 
 
-featurePlot(x=df.train[,-c('PM2.5')],y=df$PM2.5,plot="pairs")
 
-
-
-
-
-
-completeness(df)
 
 
 
@@ -264,6 +285,7 @@ p<-ggplot(df, aes(Station,PM2.5))
 p+geom_violin(scale = "count",adjust = 0.8,aes(fill = Station))
 
 
+>>>>>>> 81b5d34428eda008f45ce627e1f24fdc928d3e73
 
 set.seed(9)
 rows<-sample(1:nrow(df), 0.80*nrow(df), replace=FALSE)
@@ -295,6 +317,29 @@ summary(model1)
 
 
 ##RandomForest
+library(foreach)
+library(randomForest)
+temp <- na.omit(temp)
+temp$knum<-sample(1:10,nrow(temp),replace = TRUE)
+temp.train <- temp[!temp$knum==i,-c("knum")]
+temp.train$knum<- sample(1:10,nrow(temp.train),replace = TRUE)
+rmse_kfold<-0
+for (i in 1:folds)
+{
+  df.test<-temp.train[temp.train$knum==i,]
+  df.train<-temp.train[!temp.train$knum==i,]
+  pred<-predict(model,df.test)
+  pred[is.na(pred)]<-mean(pred,na.rm = T)
+  rmse_kfold<-cbind(rmse_kfold,rmse(df.test[,resp],pred))
+}
+sample <- 
+x <- temp[,-c(1,9)]
+y<-temp[,9]
+library(foreach)
+library(randomForest)
+rf <- foreach(ntree=rep(250,4), .combine=combine,.packages = 'randomForest') %dopar% randomForest(x,y,ntree=ntree,na.action=na.omit)
+?randomForest
+rf
 
 
 ##BART
