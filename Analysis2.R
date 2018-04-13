@@ -204,7 +204,7 @@ df<-temp
 
 
 ##EDA
-install.package('devtools')
+install.packages('devtools')
 library(devtools)
 ## Cor plot between all numeric variables and using only the complete values
 M <- cor(df[,-c(1,2,14,15)],use="complete.obs")
@@ -285,7 +285,7 @@ p<-ggplot(df, aes(Station,PM2.5))
 p+geom_violin(scale = "count",adjust = 0.8,aes(fill = Station))
 
 
->>>>>>> 81b5d34428eda008f45ce627e1f24fdc928d3e73
+
 
 set.seed(9)
 rows<-sample(1:nrow(df), 0.80*nrow(df), replace=FALSE)
@@ -317,11 +317,15 @@ summary(model1)
 
 
 ##RandomForest
+install.packages('doParallel')
+library(doParallel)
+registerDoParallel(cores=20)
 library(foreach)
 library(randomForest)
 temp <- na.omit(temp)
 temp$knum<-sample(1:10,nrow(temp),replace = TRUE)
-temp.train <- temp[!temp$knum==i,-c("knum")]
+temp.train <- temp[!temp$knum==i,-"knum"]
+
 temp.train$knum<- sample(1:10,nrow(temp.train),replace = TRUE)
 rmse_kfold<-0
 for (i in 1:folds)
@@ -337,10 +341,86 @@ x <- temp[,-c(1,9)]
 y<-temp[,9]
 library(foreach)
 library(randomForest)
-rf <- foreach(ntree=rep(250,4), .combine=combine,.packages = 'randomForest') %dopar% randomForest(x,y,ntree=ntree,na.action=na.omit)
-?randomForest
+rf <- foreach(ntree=rep(250,4), .combine=combine,.packages = 'randomForest') %dopar% randomForest(PM2.5~. ,ntree=ntree,na.action=na.omit, data= df.train)
+rf1<-randomForest(PM2.5 ~ . , data = df.train, na.action = na.omit)
+library(ModelMetrics)
+crossValidate("kfold",10,df.train,rf1,"PM2.5")
 rf
+summary(rf)
 
+
+
+crossValidate<-function(cvtype,folds,dataset,model,resp)
+  
+{
+  
+  df<-dataset
+  
+  l <- vector("list", 2)
+  
+  if (cvtype=="kfold")
+    
+  {
+    
+    df$knum<-sample(1:folds,nrow(df),replace = TRUE)
+    
+    rmse_kfold<-0
+    
+    for (i in 1:folds)
+      
+    {
+      
+      df.test<-df[df$knum==i,]
+      
+      df.train<-df[!df$knum==i,]
+      
+      pred<-predict(model,df.test)
+      
+      pred[is.na(pred)]<-mean(pred,na.rm = T)
+      
+      rmse_kfold<-cbind(rmse_kfold,rmse(df.test[,resp],pred))
+      
+    }
+    
+    l[[1]]<-rmse_kfold[,-1]
+    
+    l[[2]]<-mean(rmse_kfold[,-1])
+    
+    return (l)
+    
+  }
+  
+  else if (cvtype=="LOOCV"||cvtype=="loocv")
+    
+  {
+    
+    rmse_loocv<-0
+    
+    for (i in 1:nrow(df))
+      
+    {
+      
+      df.test<-df[i,]
+      
+      df.train<-df[-i,]
+      
+      pred<-predict(model,df.test)
+      
+      pred[is.na(pred)]<-mean(df.train[,resp])
+      
+      rmse_loocv<-cbind(rmse_loocv,rmse(df.test[,resp],pred))
+      
+    }
+    
+    l[[1]]<-rmse_loocv[,-1]
+    
+    l[[2]]<-mean(rmse_loocv[,-1])
+    
+    return(l)
+    
+  }
+  
+}
 
 ##BART
 options(java.parameters = "-Xmx25g")
@@ -371,3 +451,51 @@ plot_y_vs_yhat(bart_machine_cv, prediction_intervals = TRUE)
 
 
 ##NeuralNet
+
+
+##Parallel
+applyKernel <- function(newX, FUN, d2, d.call, dn.call=NULL, ...) {
+  
+  foreach(i= 1:d2)%dopar% 
+  FUN(array(newX[,i], d.call, dn.call), ...)
+    
+}
+           
+            
+
+applyKernel(randomForest(x,y,ntree=ntree,na.action=na.omit),50,20)
+?iblkcol
+
+
+
+
+library(doParallel)
+registerDoParallel(cores=20)
+library(foreach)
+library(randomForest)
+
+folds <- 10
+temp$folds <- sample(seq(1:folds),size=nrow(temp),replace=T)
+temp<-na.omit(temp)
+error.df <- data.frame(rmseOS=numeric(folds))
+for(i in (1:folds)){
+  # start a for loop
+  set.seed(9)
+  temp.test<- temp[which(temp$folds==i),]
+  temp.train <-temp[-which(temp$folds==i),]
+  #rf<-randomForest(PM2.5~.,data=temp.train)
+  rf <- foreach(ntree=rep(250,4), .combine=combine,.packages = 'randomForest') %dopar% randomForest(PM2.5~. -Date ,ntree=ntree,na.action=na.omit, data= df.train)
+  rf.pred.OS<-predict(rf,temp.test)
+  error.df$rmseOS[i] <-rmse(actual = temp.test$PM2.5,predicted = rf.pred.OS)
+  }
+error.df$rmseOS
+
+require(randomForest)
+varImpPlot(rf,sort =TRUE, n.var=min(20, if(is.null(dim(rf$importance)))
+  length(rf$importance) else nrow(rf$importance)))
+
+
+
+
+
+
