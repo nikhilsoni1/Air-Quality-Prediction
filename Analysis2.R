@@ -319,28 +319,28 @@ summary(model1)
 ##RandomForest
 library(foreach)
 library(randomForest)
+library(ModelMetrics)
 temp <- na.omit(temp)
 temp$knum<-sample(1:10,nrow(temp),replace = TRUE)
-temp.train <- temp[!temp$knum==i,-c("knum")]
+temp.train <- temp[!temp$knum==1,-c(16)]
 temp.train$knum<- sample(1:10,nrow(temp.train),replace = TRUE)
 rmse_kfold<-0
-for (i in 1:folds)
+for (i in 1:10)
 {
   df.test<-temp.train[temp.train$knum==i,]
   df.train<-temp.train[!temp.train$knum==i,]
-  pred<-predict(model,df.test)
+  x <- df.train[,-c(1,9)]
+  y<- df.train[,9]
+  rf <- foreach(ntree=rep(250,4), .combine=combine,.packages = 'randomForest') %dopar% randomForest(x,y,ntree=ntree,na.action=na.omit)
+  
+  pred<-predict(rf,df.test)
   pred[is.na(pred)]<-mean(pred,na.rm = T)
-  rmse_kfold<-cbind(rmse_kfold,rmse(df.test[,resp],pred))
+  rmse_kfold<-cbind(rmse_kfold,rmse(df.test[,9],pred))
 }
-sample <- 
-x <- temp[,-c(1,9)]
-y<-temp[,9]
 library(foreach)
 library(randomForest)
-rf <- foreach(ntree=rep(250,4), .combine=combine,.packages = 'randomForest') %dopar% randomForest(x,y,ntree=ntree,na.action=na.omit)
-?randomForest
 rf
-
+rmse_kfold
 
 ##BART
 options(java.parameters = "-Xmx25g")
