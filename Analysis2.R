@@ -6,18 +6,18 @@ setwd(wd)
 load(paste0(wd, '/Analysis2.Rdata'))
 rm(wd)
 
-library(ggplot2)
 install.packages('caret')
-library(caret)
 install.packages('gam')
-library(gam)
 install.packages('rJava')
-library(rJava)
 install.packages('bartMachine')
-library(bartMachine)
 install.packages('ModelMetrics')
-library(ModelMetrics)
 install.packages('stats')
+library(ggplot2)
+library(caret)
+library(gam)
+library(rJava)
+library(bartMachine)
+library(ModelMetrics)
 library(stats)
 library(corrplot)
 library(Hmisc)
@@ -283,26 +283,17 @@ p+geom_violin(scale = "count",adjust = 0.8,aes(fill = Events))
 #Stations
 p<-ggplot(df, aes(Station,PM2.5))
 p+geom_violin(scale = "count",adjust = 0.8,aes(fill = Station))
-
-
->>>>>>> 81b5d34428eda008f45ce627e1f24fdc928d3e73
-
 set.seed(9)
+
 rows<-sample(1:nrow(df), 0.80*nrow(df), replace=FALSE)
 df.train<-df[rows,]
 df.test<-df[-rows,]
 rm(rows)
 
-# EDA----
-
-
-
-
-
 # linear model----
 
 df$GC<-as.numeric(df$GC)
-model1<-gam(PM2.5~., data=df.train)
+model1<-glm(PM2.5~WS+WD+AT+RH+SR+BP+Aerosol_Type_Land+TempN+Humid+Precip+Station+GC, data=df)
 summary(model1)
 
 
