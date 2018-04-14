@@ -359,49 +359,48 @@ gam.rmse<-rmse(gam.pred,temp$PM2.5)
 
 
 #RandomForest----
+
 library(doParallel)
 library(foreach)
 library(randomForest)
 library(ModelMetrics)
 temp <- na.omit(temp)
-temp$knum<-sample(1:10,nrow(temp),replace = TRUE)
-temp.train <- temp[!temp$knum==1,-c(16)]
-temp.train$knum<- sample(1:10,nrow(temp.train),replace = TRUE)
-rmse_kfold<-0
-for (i in 1:10)
-{
-  df.test<-temp.train[temp.train$knum==i,]
-  df.train<-temp.train[!temp.train$knum==i,]
-  x <- df.train[,-c(1,9)]
-  y<- df.train[,9]
-  rf <- foreach(ntree=rep(250,4), .combine=combine,.packages = 'randomForest') %dopar% randomForest(x,y,ntree=ntree,na.action=na.omit)
-  
-  pred<-predict(rf,df.test)
-  pred[is.na(pred)]<-mean(pred,na.rm = T)
-  rmse_kfold<-cbind(rmse_kfold,rmse(df.test[,9],pred))
-}
-library(foreach)
-library(randomForest)
-rf
-rmse_kfold
-
-##BART
-
-options(java.parameters = "-Xmx25g")
+rf <- foreach(ntree=rep(250,4), .combine=combine,.packages = 'randomForest') %dopar% randomForest(temp.train[,-c(1,9)],temp.train$PM2.5,ntree=ntree)
+rf.cv<-crossValidate("kfold",10,temp.train,rf,'PM2.5') 
+rf.predict<-predict(rf,temp.test)
+rf.rmse<-rmse(rf.predict,temp.test$PM2.5)
+rf.rmse
+varImpPlot(rf,sort =TRUE, n.var=min(20, if(is.null(dim(rf$importance)))
+  length(rf$importance) else nrow(rf$importance)))
+#BART-------
+options(java.parameters="-Xmx100g")
 library('bartMachine')
 library('rJava')
 set_bart_machine_num_cores(20)
 
-Y<-df$PM2.5
-X<-df[,-c(1,9)]
+Y<-df.train$PM2.5
+X<-df.train[,-c(1,9)]
 
 bartModel <- bartMachine(X, Y, use_missing_data = TRUE,serialize = T)
 summary(bartModel)
 rmse_kfold<-k_fold_cv(X, Y, k_folds = 10, use_missing_data = TRUE)
 bart_machine_cv <- bartMachineCV(X, Y,use_missing_data = TRUE,serialize = T)
-investigate_var_importance(bartModel, num_replicates_for_avg = 20)
+xtest <- df.test[,-c(1,9)]
+ytest <- df.test$PM2.5
+bart.pred<-bart_predict_for_test_data(bart_machine_cv, xtest, ytest)
+bart_predict_for_test_data(bart_machine_cv, xtest, ytest)$rmse
+investigate_var_importance(bart_machine_cv, num_replicates_for_avg = 20)
 plot_y_vs_yhat(bart_machine_cv, credible_intervals = TRUE)
 plot_y_vs_yhat(bart_machine_cv, prediction_intervals = TRUE)
+pd_plot(bart_machine_cv,j='BP')
+pd_plot(bart_machine_cv,j='TempN')
+pd_plot(bart_machine_cv,j='SR')
+cov_importance_test(bart_machine_cv,covariates = "Humid")
+cov_importance_test(bart_machine_cv,covariates = "Precip")
+cov_importance_test(bart_machine_cv,covariates = "RH")
+cov_importance_test(bart_machine_cv)
+
+
 
 ##SVM
 
