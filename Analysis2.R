@@ -13,11 +13,13 @@ install.packages('rJava')
 install.packages('bartMachine')
 install.packages('ModelMetrics')
 install.packages('stats')
+install.packages('earth')
 library(ggplot2)
 library(caret)
 library(gam)
 library(rJava)
 library(bartMachine)
+library(earth)
 library(ModelMetrics)
 library(stats)
 library(corrplot)
@@ -400,7 +402,45 @@ cov_importance_test(bart_machine_cv,covariates = "Precip")
 cov_importance_test(bart_machine_cv,covariates = "RH")
 cov_importance_test(bart_machine_cv)
 
+##MARS-----------------------------
+#First we build the unpruned model
+temp<-na.omit(temp)
+form<-as.formula(paste0(names(temp[9]),"~",paste0(names(temp[-c(1,9)]),collapse="+")))
+mars.model1<-earth(formula=form,data=temp.train,pmethod="none")
+rm(form)
+summary(mars.model1)
+plotmo(mars.model1, bottom_margin = 1)
 
+mars.model1.cv<-crossValidate("kfold",10,temp.train,mars.model1,"PM2.5")
+
+#Now, we compare the model with a pruned MARS model
+form<-as.formula(paste0(names(temp[9]),"~",paste0(names(temp[-c(1,9)]),collapse="+")))
+mars.model2<-earth(formula=form,data=temp.train)
+rm(form)
+summary(mars.model2)
+plotmo(mars.model2)
+mars.model2.cv<-crossValidate("kfold",10,temp.train,mars.model2,"PM2.5")
+
+#Comparing the 2 MARS models
+RMSE<-data.frame(mars.model1.cv[1],mars.model2.cv[1])
+colnames(RMSE)<-c("MARS_model1_rmse","MARS_model2_rmse")
+RMSE
+par(mfrow=c(1,1))
+boxplot(RMSE, col = c("blue","red"))
+legend("bottomright",legend=c("Model1_MARS","Model2_MARS"),col=c("blue","red"),pch=c(19,19), cex = 0.6)
+
+#Since, we can see that the unpruned MARS model (Model1) has much better rmse values 
+#and also it has much less noise. Also, from the plots we can conclude that Model1 fits data well and does not overfit data that much when compared to performance.
+#So, Model1 is selected.
+#Prediction and rmseOS
+rf.predict<-predict(rf,temp.test)
+rf.rmse<-rmse(rf.predict,temp.test$PM2.5)
+rf.rmse
+varImpPlot(rf,sort =TRUE, n.var=min(20, if(is.null(dim(rf$importance)))
+  length(rf$importance) else nrow(rf$importance)))
+mars.model1.predict<-predict(mars.model1, temp.test)
+mars.model1.rmse<-rmse(mars.model1.predict,temp.test$PM2.5)
+mars.model1.rmse
 
 ##SVM
 
