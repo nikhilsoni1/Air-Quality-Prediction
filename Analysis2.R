@@ -1,6 +1,6 @@
 # header----
 .libPaths( c( .libPaths(), "/home/sonin/Rlibs") )
-save(list=ls(all=T),file='Analysis2.RData')
+#save(list=ls(all=T),file='Analysis2.RData')
 resp<-"PM2.5"
 wd<-dirname(rstudioapi::getSourceEditorContext()$path)
 setwd(wd)
