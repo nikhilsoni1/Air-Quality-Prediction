@@ -1,4 +1,5 @@
 # header----
+.libPaths( c( .libPaths(), "/home/sonin/Rlibs") )
 save(list=ls(all=T),file='Analysis2.RData')
 resp<-"PM2.5"
 wd<-dirname(rstudioapi::getSourceEditorContext()$path)
@@ -307,7 +308,8 @@ summary(model1)
 
 
 #Models---------------------------------------------------
-##GLM
+
+#GLM----
 
 
 glm1<-glm(PM2.5~. -Date,data = df.train)
@@ -317,7 +319,7 @@ glm3<-glm(PM2.5 ~ factor(Station, exclude=c('AV','AYA','BC','CRRI','DTU','IGI','
 
 #glm1.cv<-crossValidate("kfold",10,df.train,glm1,"PM2.5")
 #glm2.cv<-list(crossValidate("kfold",10,df.train,glm2,"PM2.5"), crossValidate("loocv",10,df.train,glm2,"PM2.5"))
-glm3.cv<-list(crossValidate("kfold",10,df.train,glm3,"PM2.5"), crossValidate("loocv",10,df.train,glm3,"PM2.5"))
+glm3.cv<-list(crossValidate("kfold",10,df.train,glm3,"PM2.5"))
 
 glm.pred<-predict(glm3, df.test)
 glm.pred[is.na(glm.pred)]<-mean(glm.pred,na.rm = T)
@@ -329,8 +331,32 @@ plot(y=glm3$residuals, x=glm3$fitted.values, xlab="Fitted Values", ylab="Residua
 qqnorm(glm3$residuals)
 qqline(glm3$residuals)
 
-##GAM
-gam1<-gam(resp~)
+##GAM----
+gam1<-gam(PM2.5~. -Date, data=df.train)
+summary(gam1)
+
+form<-as.formula(paste0(resp,"~",paste0("s(",colnames(df.train[,-c(1,2,9,14,15)]),",d=4",")",collapse="+")
+                        ,"+",paste0(colnames(df.train[,c(2,14,15)]),collapse="+"),collapse=""))
+gam2<-gam(formula = form,data=df.train)
+summary(gam2)
+rm(form)
+
+form<-as.formula(paste0(resp,"~",paste0("s(",colnames(df.train[,-c(1,2,9,10,13,14,15)]),",d=4",")",collapse="+")
+                        ,"+",paste0(colnames(df.train[,c(2,14,15)]),collapse="+"),collapse=""))
+gam3<-gam(formula = form, data=df.train)
+summary(gam3)
+rm(form)
+
+gam1.cv=list(crossValidate('kfold',10,df.train,gam1,resp))
+gam2.cv=list(crossValidate('kfold',10,df.train,gam2,resp))
+gam3.cv=list(crossValidate('kfold',10,df.train,gam3,resp))
+
+temp<-df.test[which(df.test$Events!='4'),]
+rownames(temp) <- NULL
+temp<-temp[complete.cases(temp),]
+df.gam.test<-temp # Removing all the incomplete cases
+gam.pred<-predict(gam3,temp)
+gam.rmse<-rmse(gam.pred,temp$PM2.5)
 
 ##CART
 
@@ -363,9 +389,10 @@ rf
 rmse_kfold
 
 ##BART
+
 options(java.parameters = "-Xmx25g")
 library('bartMachine')
-#library('rJava')
+library('rJava')
 set_bart_machine_num_cores(20)
 
 Y<-df$PM2.5
