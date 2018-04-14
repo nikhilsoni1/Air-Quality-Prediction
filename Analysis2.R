@@ -432,12 +432,8 @@ legend("bottomright",legend=c("Model1_MARS","Model2_MARS"),col=c("blue","red"),p
 #Since, we can see that the unpruned MARS model (Model1) has much better rmse values 
 #and also it has much less noise. Also, from the plots we can conclude that Model1 fits data well and does not overfit data that much when compared to performance.
 #So, Model1 is selected.
+
 #Prediction and rmseOS
-rf.predict<-predict(rf,temp.test)
-rf.rmse<-rmse(rf.predict,temp.test$PM2.5)
-rf.rmse
-varImpPlot(rf,sort =TRUE, n.var=min(20, if(is.null(dim(rf$importance)))
-  length(rf$importance) else nrow(rf$importance)))
 mars.model1.predict<-predict(mars.model1, temp.test)
 mars.model1.rmse<-rmse(mars.model1.predict,temp.test$PM2.5)
 mars.model1.rmse
