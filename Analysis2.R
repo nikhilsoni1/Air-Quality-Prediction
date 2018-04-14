@@ -471,7 +471,9 @@ mvt<-mvtb(Y=Y, X=X,
           cv.folds=10,
           mc.cores=20,
           seednum=9)
-
+yhat <- predict(mvt,newdata=X)
+(r2 <- var(yhat)/var(Y))
+mvt.rmse<-rmse(yhat,Y)
 ##SVM
 
 
