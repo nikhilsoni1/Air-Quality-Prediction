@@ -14,6 +14,8 @@ install.packages('bartMachine')
 install.packages('ModelMetrics')
 install.packages('stats')
 install.packages('earth')
+install.packages('mvtboost')
+install.packages('rpart')
 library(ggplot2)
 library(caret)
 library(gam)
@@ -21,10 +23,12 @@ library(rJava)
 library(bartMachine)
 library(earth)
 library(ModelMetrics)
+library(mvtboost)
 library(stats)
 library(corrplot)
 library(Hmisc)
 library(gam)
+library(rpart)
 # functions----
 
 completeness<-function(dat)
@@ -358,7 +362,17 @@ gam.pred<-predict(gam3,temp)
 gam.rmse<-rmse(gam.pred,temp$PM2.5)
 
 ##CART
+form<-as.formula(paste0(names(temp[9]),"~",paste0(names(temp[-c(1,9)]),collapse="+")))
+tree.model1<-rpart(formula=form,data=df.train)
+summary(tree.model1)
+install.packages('rpart.plot')
+library('rpart.plot')
+rpart.plot(tree.model1)
+tree.model1.cv<-crossValidate("kfold",10,df.train, tree.model1,"PM2.5")
 
+tree.model1.predict<-predict(tree.model1, df.test)
+tree.model1.rmse<-rmse(tree.model1.predict,df.test$PM2.5)
+tree.model1.rmse
 
 #RandomForest----
 
@@ -438,6 +452,19 @@ mars.model1.predict<-predict(mars.model1, temp.test)
 mars.model1.rmse<-rmse(mars.model1.predict,temp.test$PM2.5)
 mars.model1.rmse
 
+
+##MVTBoost
+temp.df1<-read.csv("/home/sonin/Harmanik/EnvVar.csv")
+temp.df2<-read.csv("/home/sonin/Harmanik/AOT.csv")
+df.temp<-merge(temp.df1, temp.df2, by.x = c('From.Date', 'Code'), by.y = c('Date','Station'), all.x = TRUE) 
+TEMP.DF<-na.omit(df.temp)
+data("TEMP.DF",package="ggplot2")
+Y<-t1
+Ys<-scale(Y)
+x<-t2
+
+out<-mvtb(Y=Ys, X=x, shrinkage = 0.01,interaction.depth = 3)
+?mvtb
 ##SVM
 
 
