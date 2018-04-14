@@ -291,10 +291,15 @@ p+geom_violin(scale = "count",adjust = 0.8,aes(fill = Events))
 #Stations
 p<-ggplot(df, aes(Station,PM2.5))
 p+geom_violin(scale = "count",adjust = 0.8,aes(fill = Station))
+<<<<<<< HEAD
 
 
 #Test Train----
 set.seed(10)
+=======
+set.seed(9)
+
+>>>>>>> e868e723d601caf177b6adf141f8375b12b02b22
 rows<-sample(1:nrow(df), 0.80*nrow(df), replace=FALSE)
 df.train<-df[rows,]
 df.test<-df[-rows,]
@@ -303,7 +308,7 @@ rm(rows)
 # linear model----
 
 df$GC<-as.numeric(df$GC)
-model1<-gam(PM2.5~., data=df.train)
+model1<-glm(PM2.5~WS+WD+AT+RH+SR+BP+Aerosol_Type_Land+TempN+Humid+Precip+Station+GC, data=df)
 summary(model1)
 
 
