@@ -94,7 +94,9 @@ df.store$Date<-as.character(df.store$Date)
 df.store$Date<-as.Date(df.store$Date, format='%d-%m-%Y')
 summary(is.na(df.store$Date))
 df<-merge(df.store, df.aot, by=c('Date', 'Station'), all.x = TRUE)  # (3) -> Merging (1) & (2)
+df.all<-merge(df.store, df.aot, by=c('Date', 'Station'), all.x = TRUE)
 df<-df[,-c(9, 11, 12, 13, 14, 15, 16, 18, 19, 20)]
+
 
 # Additional temperature data and processing  (4)
 df.temp<-read.csv('//home/sonin/Harmanik/TemperatureData.csv')
@@ -453,18 +455,23 @@ mars.model1.rmse<-rmse(mars.model1.predict,temp.test$PM2.5)
 mars.model1.rmse
 
 
-##MVTBoost
-temp.df1<-read.csv("/home/sonin/Harmanik/EnvVar.csv")
-temp.df2<-read.csv("/home/sonin/Harmanik/AOT.csv")
-df.temp<-merge(temp.df1, temp.df2, by.x = c('From.Date', 'Code'), by.y = c('Date','Station'), all.x = TRUE) 
-TEMP.DF<-na.omit(df.temp)
-data("TEMP.DF",package="ggplot2")
-Y<-t1
-Ys<-scale(Y)
-x<-t2
+##MVTBoost----
 
-out<-mvtb(Y=Ys, X=x, shrinkage = 0.01,interaction.depth = 3)
-?mvtb
+df.mvt<-df.all[complete.cases(df.all[,c(9:16)]),]
+Y<-df.mvt[,c(9:16)]
+X<-df.mvt[,-c(1,9:20)]
+Y<-scale(Y)
+
+
+mvt<-mvtb(Y=Y, X=X,
+          shrinkage = 0.01,
+          interaction.depth = 3,
+          n.trees=1000,bag.fraction = 0.8,
+          train.fraction = 0.8,
+          cv.folds=10,
+          mc.cores=20,
+          seednum=9)
+
 ##SVM
 
 
