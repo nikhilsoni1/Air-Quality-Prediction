@@ -385,21 +385,19 @@ library(randomForest)
 rf
 rmse_kfold
 
-##BART
-
-options(java.parameters = "-Xmx25g")
+options(java.parameters="-Xmx100g")
 library('bartMachine')
 library('rJava')
 set_bart_machine_num_cores(20)
 
-Y<-df$PM2.5
-X<-df[,-c(1,9)]
+Y<-df.train$PM2.5
+X<-df.train[,-c(1,9)]
 
 bartModel <- bartMachine(X, Y, use_missing_data = TRUE,serialize = T)
 summary(bartModel)
 rmse_kfold<-k_fold_cv(X, Y, k_folds = 10, use_missing_data = TRUE)
 bart_machine_cv <- bartMachineCV(X, Y,use_missing_data = TRUE,serialize = T)
-investigate_var_importance(bartModel, num_replicates_for_avg = 20)
+investigate_var_importance(bart_machine_cv, num_replicates_for_avg = 20)
 plot_y_vs_yhat(bart_machine_cv, credible_intervals = TRUE)
 plot_y_vs_yhat(bart_machine_cv, prediction_intervals = TRUE)
 
