@@ -397,6 +397,10 @@ bartModel <- bartMachine(X, Y, use_missing_data = TRUE,serialize = T)
 summary(bartModel)
 rmse_kfold<-k_fold_cv(X, Y, k_folds = 10, use_missing_data = TRUE)
 bart_machine_cv <- bartMachineCV(X, Y,use_missing_data = TRUE,serialize = T)
+xtest <- df.test[,-c(1,9)]
+ytest <- df.test$PM2.5
+bart.pred<-bart_predict_for_test_data(bart_machine_cv, xtest, ytest)
+bart_predict_for_test_data(bart_machine_cv, xtest, ytest)$rmse
 investigate_var_importance(bart_machine_cv, num_replicates_for_avg = 20)
 plot_y_vs_yhat(bart_machine_cv, credible_intervals = TRUE)
 plot_y_vs_yhat(bart_machine_cv, prediction_intervals = TRUE)
