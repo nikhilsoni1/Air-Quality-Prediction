@@ -419,8 +419,13 @@ cov_importance_test(bart_machine_cv)
 
 ##MARS-----------------------------
 #First we build the unpruned model
-temp<-na.omit(temp)
-form<-as.formula(paste0(names(temp[9]),"~",paste0(names(temp[-c(1,9)]),collapse="+")))
+df.mars<-df
+df.mars<-na.omit(df.mars)
+rows<-sample(1:nrow(df.mars),0.80*nrow(df.mars),replace = F)
+df.mars.train<-df.mars[rows,]
+df.mars.test<-df.mars[-rows,]
+rm(rows)
+form<-as.formula(paste0(names(temp[9]),"~",paste0(names(df.mars[-c(1,9)]),collapse="+")))
 mars.model1<-earth(formula=form,data=temp.train,pmethod="none")
 rm(form)
 summary(mars.model1)
@@ -491,6 +496,8 @@ for(i in names(yhat))
 {
   mvt.rmse[,i]<-rmse(yhat[,i],Y.test[,i])
 }
+plot(mvt,response.no=2,predictor.no=4)
+mvtb.perspec(mvt,theta=45)
 
 ##SVM
 
