@@ -1,6 +1,6 @@
 # header----
 .libPaths( c( .libPaths(), "/home/sonin/Rlibs") )
-save(list=ls(all=T),file='Analysis2.RData')
+#save(list=ls(all=T),file='Analysis2.RData')
 resp<-"PM2.5"
 wd<-dirname(rstudioapi::getSourceEditorContext()$path)
 setwd(wd)
@@ -13,16 +13,21 @@ install.packages('rJava')
 install.packages('bartMachine')
 install.packages('ModelMetrics')
 install.packages('stats')
+install.packages('earth')
+install.packages('mvtboost')
+install.packages('rpart')
 library(ggplot2)
 library(caret)
 library(gam)
 library(rJava)
 library(bartMachine)
+library(earth)
 library(ModelMetrics)
+library(mvtboost)
 library(stats)
 library(corrplot)
 library(Hmisc)
-library(gam)
+library(rpart)
 # functions----
 
 completeness<-function(dat)
@@ -88,7 +93,9 @@ df.store$Date<-as.character(df.store$Date)
 df.store$Date<-as.Date(df.store$Date, format='%d-%m-%Y')
 summary(is.na(df.store$Date))
 df<-merge(df.store, df.aot, by=c('Date', 'Station'), all.x = TRUE)  # (3) -> Merging (1) & (2)
+df.all<-merge(df.store, df.aot, by=c('Date', 'Station'), all.x = TRUE)
 df<-df[,-c(9, 11, 12, 13, 14, 15, 16, 18, 19, 20)]
+
 
 # Additional temperature data and processing  (4)
 df.temp<-read.csv('//home/sonin/Harmanik/TemperatureData.csv')
@@ -356,7 +363,17 @@ gam.pred<-predict(gam3,temp)
 gam.rmse<-rmse(gam.pred,temp$PM2.5)
 
 ##CART
+form<-as.formula(paste0(names(temp[9]),"~",paste0(names(temp[-c(1,9)]),collapse="+")))
+tree.model1<-rpart(formula=form,data=df.train)
+summary(tree.model1)
+install.packages('rpart.plot')
+library('rpart.plot')
+rpart.plot(tree.model1)
+tree.model1.cv<-crossValidate("kfold",10,df.train, tree.model1,"PM2.5")
 
+tree.model1.predict<-predict(tree.model1, df.test)
+tree.model1.rmse<-rmse(tree.model1.predict,df.test$PM2.5)
+tree.model1.rmse
 
 #RandomForest----
 
@@ -400,7 +417,87 @@ cov_importance_test(bart_machine_cv,covariates = "Precip")
 cov_importance_test(bart_machine_cv,covariates = "RH")
 cov_importance_test(bart_machine_cv)
 
+##MARS-----------------------------
+#First we build the unpruned model
+df.mars<-df
+df.mars<-na.omit(df.mars)
+rows<-sample(1:nrow(df.mars),0.80*nrow(df.mars),replace = F)
+df.mars.train<-df.mars[rows,]
+df.mars.test<-df.mars[-rows,]
+rm(rows)
+form<-as.formula(paste0(names(temp[9]),"~",paste0(names(df.mars[-c(1,9)]),collapse="+")))
+mars.model1<-earth(formula=form,data=temp.train,pmethod="none")
+rm(form)
+summary(mars.model1)
+plotmo(mars.model1, bottom_margin = 1)
 
+mars.model1.cv<-crossValidate("kfold",10,temp.train,mars.model1,"PM2.5")
+
+#Now, we compare the model with a pruned MARS model
+form<-as.formula(paste0(names(temp[9]),"~",paste0(names(temp[-c(1,9)]),collapse="+")))
+mars.model2<-earth(formula=form,data=temp.train)
+rm(form)
+summary(mars.model2)
+plotmo(mars.model2)
+mars.model2.cv<-crossValidate("kfold",10,temp.train,mars.model2,"PM2.5")
+
+#Comparing the 2 MARS models
+RMSE<-data.frame(mars.model1.cv[1],mars.model2.cv[1])
+colnames(RMSE)<-c("MARS_model1_rmse","MARS_model2_rmse")
+RMSE
+par(mfrow=c(1,1))
+boxplot(RMSE, col = c("blue","red"))
+legend("bottomright",legend=c("Model1_MARS","Model2_MARS"),col=c("blue","red"),pch=c(19,19), cex = 0.6)
+
+#Since, we can see that the unpruned MARS model (Model1) has much better rmse values 
+#and also it has much less noise. Also, from the plots we can conclude that Model1 fits data well and does not overfit data that much when compared to performance.
+#So, Model1 is selected.
+
+#Prediction and rmseOS
+mars.model1.predict<-predict(mars.model1, temp.test)
+mars.model1.rmse<-rmse(mars.model1.predict,temp.test$PM2.5)
+mars.model1.rmse
+
+
+##MVTBoost----
+
+df.mvt<-df.all[complete.cases(df.all[,c(9:16)]),]
+rows<-sample(1:nrow(df.mvt),0.80*nrow(df.mvt),replace = F)
+df.mvt.train<-df.mvt[rows,]
+df.mvt.test<-df.mvt[-rows,]
+rm(rows)
+
+Y.train<-df.mvt.train[,c(9:16)]
+X.train<-df.mvt.train[,-c(1,9:20)]
+#Y.train<-scale(Y.train)
+
+Y.test<-df.mvt.test[,c(9:16)]
+X.test<-df.mvt.test[,-c(1,9:20)]
+
+
+mvt<-mvtb(Y=Y.train, X=X.train,
+          shrinkage = 0.01,
+          interaction.depth = 3,
+          n.trees=1000,bag.fraction = 0.5,
+          train.fraction = 0.8,
+          cv.folds=10,
+          mc.cores=20,
+          seednum=9)
+
+yhat<-data.frame(predict(mvt,newdata=X.test))
+colnames(yhat)<-colnames(Y.test)
+#Y.test<-data.frame(scale(Y.test))
+row.names(Y.test)<-NULL
+#(r2 <- var(yhat)/var(Y))
+
+mvt.rmse<-data.frame(matrix(ncol = length(names(yhat)), nrow = 1))
+colnames(mvt.rmse)<-names(yhat)
+for(i in names(yhat))
+{
+  mvt.rmse[,i]<-rmse(yhat[,i],Y.test[,i])
+}
+plot(mvt,response.no=2,predictor.no=4)
+mvtb.perspec(mvt,theta=45)
 
 ##SVM
 
