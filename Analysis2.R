@@ -16,6 +16,7 @@ install.packages('stats')
 install.packages('earth')
 install.packages('mvtboost')
 install.packages('rpart')
+install.packages('e1071')
 library(ggplot2)
 library(caret)
 library(gam)
@@ -28,6 +29,7 @@ library(stats)
 library(corrplot)
 library(Hmisc)
 library(rpart)
+library(e1071)
 # functions----
 
 completeness<-function(dat)
@@ -362,8 +364,9 @@ df.gam.test<-temp # Removing all the incomplete cases
 gam.pred<-predict(gam3,temp)
 gam.rmse<-rmse(gam.pred,temp$PM2.5)
 
-##CART
-form<-as.formula(paste0(names(temp[9]),"~",paste0(names(temp[-c(1,9)]),collapse="+")))
+##CART-----------------------------------------------------------
+#Unpruned CART
+form<-as.formula(paste0(names(df.train[9]),"~",paste0(names(df.train[-c(1,9)]),collapse="+")))
 tree.model1<-rpart(formula=form,data=df.train)
 summary(tree.model1)
 install.packages('rpart.plot')
@@ -371,9 +374,24 @@ library('rpart.plot')
 rpart.plot(tree.model1)
 tree.model1.cv<-crossValidate("kfold",10,df.train, tree.model1,"PM2.5")
 
+#Pruned CART
+plotcp(tree.model1,minline=T,lty=3,col=1,upper=c('size','splits','none'))
+tree.model2<-prune(tree.model1, 0.13)
+tree.model2.cv<-crossValidate("kfold",10,df.train, tree.model2,"PM2.5")
+
+#Model Comparison
+RMSEcompare.cart<-data.frame(tree.model1.cv[1],tree.model2.cv[1])
+colnames(RMSEcompare.cart)<-c("CART_model1_rmse","CART_model2_rmse")
+RMSEcompare.cart
+par(mfrow=c(1,1))
+boxplot(RMSEcompare.cart, col = c("blue","red"))
+legend("bottomright",legend=c("CART_model1_rmse","CART_model2_rmse"),col=c("blue","red"),pch=c(19,19), cex = 0.6)
+
+#Model1 better so predicting on Model1
 tree.model1.predict<-predict(tree.model1, df.test)
 tree.model1.rmse<-rmse(tree.model1.predict,df.test$PM2.5)
 tree.model1.rmse
+
 
 #RandomForest----
 
@@ -425,21 +443,21 @@ rows<-sample(1:nrow(df.mars),0.80*nrow(df.mars),replace = F)
 df.mars.train<-df.mars[rows,]
 df.mars.test<-df.mars[-rows,]
 rm(rows)
-form<-as.formula(paste0(names(temp[9]),"~",paste0(names(df.mars[-c(1,9)]),collapse="+")))
-mars.model1<-earth(formula=form,data=temp.train,pmethod="none")
+form<-as.formula(paste0(names(df.mars.train[9]),"~",paste0(names(df.mars.train[-c(1,9)]),collapse="+")))
+mars.model1<-earth(formula=form,data=df.mars.train,pmethod="none")
 rm(form)
 summary(mars.model1)
 plotmo(mars.model1, bottom_margin = 1)
 
-mars.model1.cv<-crossValidate("kfold",10,temp.train,mars.model1,"PM2.5")
+mars.model1.cv<-crossValidate("kfold",10,df.mars.train,mars.model1,"PM2.5")
 
 #Now, we compare the model with a pruned MARS model
-form<-as.formula(paste0(names(temp[9]),"~",paste0(names(temp[-c(1,9)]),collapse="+")))
-mars.model2<-earth(formula=form,data=temp.train)
+form<-as.formula(paste0(names(df.mars.train[9]),"~",paste0(names(df.mars.train[-c(1,9)]),collapse="+")))
+mars.model2<-earth(formula=form,data=df.mars.train)
 rm(form)
 summary(mars.model2)
 plotmo(mars.model2)
-mars.model2.cv<-crossValidate("kfold",10,temp.train,mars.model2,"PM2.5")
+mars.model2.cv<-crossValidate("kfold",10,df.mars.train,mars.model2,"PM2.5")
 
 #Comparing the 2 MARS models
 RMSE<-data.frame(mars.model1.cv[1],mars.model2.cv[1])
@@ -454,8 +472,8 @@ legend("bottomright",legend=c("Model1_MARS","Model2_MARS"),col=c("blue","red"),p
 #So, Model1 is selected.
 
 #Prediction and rmseOS
-mars.model1.predict<-predict(mars.model1, temp.test)
-mars.model1.rmse<-rmse(mars.model1.predict,temp.test$PM2.5)
+mars.model1.predict<-predict(mars.model1, df.mars.test)
+mars.model1.rmse<-rmse(mars.model1.predict,df.mars.test$PM2.5)
 mars.model1.rmse
 
 
@@ -499,7 +517,19 @@ for(i in names(yhat))
 plot(mvt,response.no=2,predictor.no=4)
 mvtb.perspec(mvt,theta=45)
 
-##SVM
+##SVM------------------
+df.svm<-df
+rows<-sample(1:nrow(df.svm),0.80*nrow(df.svm),replace = F)
+df.svm.train<-df.svm[rows,]
+df.svm.test<-df.svm[-rows,]
+rm(rows)
+form<-as.formula(paste0(names(df.svm.train[9]),"~",paste0(names(df.svm.train[-c(1,9)]),collapse="+")))
+svm.model1<-svm(formula=form,data=df.svm.train, cost = 100, gamma = 0.0001)
+rm(form)
+summary(svm.model1)
 
+svm.model1.predict<-predict(svm.model1, df.svm.test)
+svm.model1.rmse<-rmse(svm.model1.predict,df.svm.test$PM2.5)
+svm.model1.rmse
 
 ##NeuralNet
