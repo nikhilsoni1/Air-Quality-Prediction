@@ -27,7 +27,6 @@ library(mvtboost)
 library(stats)
 library(corrplot)
 library(Hmisc)
-library(gam)
 library(rpart)
 # functions----
 
@@ -458,22 +457,41 @@ mars.model1.rmse
 ##MVTBoost----
 
 df.mvt<-df.all[complete.cases(df.all[,c(9:16)]),]
-Y<-df.mvt[,c(9:16)]
-X<-df.mvt[,-c(1,9:20)]
-Y<-scale(Y)
+rows<-sample(1:nrow(df.mvt),0.80*nrow(df.mvt),replace = F)
+df.mvt.train<-df.mvt[rows,]
+df.mvt.test<-df.mvt[-rows,]
+rm(rows)
+
+Y.train<-df.mvt.train[,c(9:16)]
+X.train<-df.mvt.train[,-c(1,9:20)]
+#Y.train<-scale(Y.train)
+
+Y.test<-df.mvt.test[,c(9:16)]
+X.test<-df.mvt.test[,-c(1,9:20)]
 
 
-mvt<-mvtb(Y=Y, X=X,
+mvt<-mvtb(Y=Y.train, X=X.train,
           shrinkage = 0.01,
           interaction.depth = 3,
-          n.trees=1000,bag.fraction = 0.8,
+          n.trees=1000,bag.fraction = 0.5,
           train.fraction = 0.8,
           cv.folds=10,
           mc.cores=20,
           seednum=9)
-yhat <- predict(mvt,newdata=X)
-(r2 <- var(yhat)/var(Y))
-mvt.rmse<-rmse(yhat,Y)
+
+yhat<-data.frame(predict(mvt,newdata=X.test))
+colnames(yhat)<-colnames(Y.test)
+#Y.test<-data.frame(scale(Y.test))
+row.names(Y.test)<-NULL
+#(r2 <- var(yhat)/var(Y))
+
+mvt.rmse<-data.frame(matrix(ncol = length(names(yhat)), nrow = 1))
+colnames(mvt.rmse)<-names(yhat)
+for(i in names(yhat))
+{
+  mvt.rmse[,i]<-rmse(yhat[,i],Y.test[,i])
+}
+
 ##SVM
 
 
