@@ -17,6 +17,7 @@ install.packages('earth')
 install.packages('mvtboost')
 install.packages('rpart')
 install.packages('e1071')
+library(corrplot)
 library(ggplot2)
 library(caret)
 library(gam)
@@ -221,8 +222,7 @@ temp$Events<-as.factor(as.numeric(temp$Events))
 df<-temp
 
 ##EDA----
-install.package('devtools')
-library(devtools)
+
 ## Cor plot between all numeric variables and using only the complete values
 M <- cor(df[,-c(1,2,14,15)],use="complete.obs")
 corrplot(M)
@@ -329,8 +329,12 @@ glm.diag=data.frame(glm3$residuals, glm3$fitted.values)
 colnames(glm.diag)<-c('resid', 'pred')
 plot(x=df.test$PM2.5, y=glm.pred, xlab="Y", ylab="Y-hat", main="Y-hat vs. Y")# Y vs. Y-hat
 plot(y=glm3$residuals, x=glm3$fitted.values, xlab="Fitted Values", ylab="Residuals", main="e vs. Y-hat")
-qqnorm(glm3$residuals)
+
+png("Plot3.png", width = 4, height = 4, units = 'in', res = 300)
+qqnorm(glm3$residuals, main="General Linear Model")
 qqline(glm3$residuals)
+dev.off()
+
 
 ##GAM----
 gam1<-gam(PM2.5~. -Date, data=df.train)
