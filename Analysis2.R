@@ -631,8 +631,16 @@ require(randomForest)
 varImpPlot(rf,sort =TRUE, n.var=min(20, if(is.null(dim(rf$importance)))
   length(rf$importance) else nrow(rf$importance)))
 
+#Data Visulaization
+summary(df$PM2.5)
+x<-df$PM2.5
+h<-hist(x, col="red", xlab="PM2.5",breaks = 200,xlim = c(0,500),
+        main="Histogram with Normal Curve")
+xfit<-seq(min(x),max(x),length=80)
+yfit<-dnorm(xfit,mean=mean(x),sd=sd(x))
+yfit <- yfit*diff(h$mids[1:2])*length(x)
+lines(xfit, yfit, col="blue", lwd=2) 
 
-
-
-
-
+d<-density(df$PM2.5)
+plot(d, xlim = c(-10,1000), main = 'Kernel Density of PM2.5')
+polygon(d, col="red", border="blue") 
