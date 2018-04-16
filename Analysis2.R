@@ -431,6 +431,7 @@ cov_importance_test(bart_machine_cv,covariates = "Precip")
 cov_importance_test(bart_machine_cv,covariates = "RH")
 cov_importance_test(bart_machine_cv)
 
+
 ##MARS-----------------------------
 #First we build the unpruned model
 df.mars<-df
@@ -526,6 +527,7 @@ summary(svm.model1)
 
 svm.model1.predict<-predict(svm.model1, df.svm.test)
 svm.model1.rmse<-rmse(svm.model1.predict,df.svm.test$PM2.5)
+svm.cv<-crossValidate('kfold',10,df.svm.train,svm.model1,"PM2.5")
 svm.model1.rmse
 
 
@@ -536,3 +538,8 @@ rmsefinalcompare<-data.frame(glm.rmse,gam.rmse,tree.model1.rmse,rf.rmse,
 colnames(rmsefinalcompare)<-c("rmse_GLM","rmse_GAM","rmse_Tree","rmse_RF","rmse_BART","rmse_MARS","rmse_SVM")
 rmsefinalcompare
 
+sd(glm3.cv[[1]][[1]])
+sd(gam3.cv[[1]][[1]])
+sd(tree.model1.cv[[1]])
+sd(rf.cv[[1]])
+sd(mars.model1.cv[[1]])
