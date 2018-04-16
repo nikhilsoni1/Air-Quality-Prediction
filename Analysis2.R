@@ -329,7 +329,7 @@ glm3.cv<-list(crossValidate("kfold",10,df.train,glm3,"PM2.5"))
 
 glm.pred<-predict(glm3, df.test)
 glm.pred[is.na(glm.pred)]<-mean(glm.pred,na.rm = T)
-rmse(glm.pred, df.test$PM2.5)
+glm.rmse<-rmse(glm.pred, df.test$PM2.5)
 glm.diag=data.frame(glm3$residuals, glm3$fitted.values)
 colnames(glm.diag)<-c('resid', 'pred')
 plot(x=df.test$PM2.5, y=glm.pred, xlab="Y", ylab="Y-hat", main="Y-hat vs. Y")# Y vs. Y-hat
@@ -532,4 +532,11 @@ svm.model1.predict<-predict(svm.model1, df.svm.test)
 svm.model1.rmse<-rmse(svm.model1.predict,df.svm.test$PM2.5)
 svm.model1.rmse
 
-##NeuralNet
+
+#Final Model Comparison
+rmsefinalcompare<-data.frame(glm.rmse,gam.rmse,tree.model1.rmse,rf.rmse,
+                             bart_predict_for_test_data(bart_machine_cv, xtest, ytest)$rmse,
+                             mars.model1.rmse,svm.model1.rmse)
+colnames(rmsefinalcompare)<-c("rmse_GLM","rmse_GAM","rmse_Tree","rmse_RF","rmse_BART","rmse_MARS","rmse_SVM")
+rmsefinalcompare
+
