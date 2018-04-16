@@ -1,6 +1,6 @@
 # header----
 .libPaths( c( .libPaths(), "/home/sonin/Rlibs") )
-#save(list=ls(all=T),file='Analysis2.RData')
+##save(list=ls(all=T),file='Analysis2.RData')
 resp<-"PM2.5"
 wd<-dirname(rstudioapi::getSourceEditorContext()$path)
 setwd(wd)
@@ -30,8 +30,8 @@ library(corrplot)
 library(Hmisc)
 library(rpart)
 library(e1071)
-# functions----
 
+# functions----
 completeness<-function(dat)
 {
   dat<-as.data.frame(sapply(dat,as.character))
@@ -98,7 +98,6 @@ df<-merge(df.store, df.aot, by=c('Date', 'Station'), all.x = TRUE)  # (3) -> Mer
 df.all<-merge(df.store, df.aot, by=c('Date', 'Station'), all.x = TRUE)
 df<-df[,-c(9, 11, 12, 13, 14, 15, 16, 18, 19, 20)]
 
-
 # Additional temperature data and processing  (4)
 df.temp<-read.csv('//home/sonin/Harmanik/TemperatureData.csv')
 df.temp$Date<-as.character(df.temp$Date)
@@ -137,7 +136,6 @@ df[which(df$PM2.5<0),'PM2.5']<- NA
 summary(df$PM2.5)
 
 #Looks ok. PM 2.5 of 1000 was recorded in Delhi. PM2.5 = 3897.31 can be a outlier.
-#Cleaned bitch!
 
 ##AT
 summary(df$AT)
@@ -154,16 +152,18 @@ df[which(df$AT==631.98),'AT']<- NA
 summary(df$RH)
 df[order(df$RH),'RH']
 df[order(-df$RH),'RH']
+
 #RH should be between 20%-80%(historical). It cannot be 0 as well as greater than 100%.
 
 df[which(df$RH<20 | df$RH>80),'RH']<-NA
-
 
 ##WS
 summary(df$WS)
 df[order(df$WS),'WS']
 df[order(-df$WS),'WS']
+
 #The wind speed vcalues above 30 are considered as mistaken and are deleted since the units are in m/s.
+
 df[which(df$WS>30),'WS']<-NA
 
 ##SR
@@ -244,7 +244,6 @@ plot(pca,type="l")
 summary(pca)
 
 
-
 ## Biplot
 autoplot(prcomp(temppca2),data=temppca,colour="Station",loadings=TRUE,loadings.label=TRUE,loading.label.size=3)
 
@@ -252,9 +251,6 @@ autoplot(prcomp(temppca2),data=temppca,colour="Station",loadings=TRUE,loadings.l
 pca <- prcomp(temppca2,center=TRUE,scale.=TRUE)
 plot(pca,type="l")
 summary(pca)
-
-
-
 
 
 
@@ -285,7 +281,6 @@ library("devtools")
 install_github("easyGgplot2","kassambara")
 library(easyGgplot2)
 library(ggplot2)
-
 
 #GC
 p<-ggplot(df, aes(factor(GC),PM2.5))
@@ -407,6 +402,7 @@ rf.rmse<-rmse(rf.predict,temp.test$PM2.5)
 rf.rmse
 varImpPlot(rf,sort =TRUE, n.var=min(20, if(is.null(dim(rf$importance)))
   length(rf$importance) else nrow(rf$importance)))
+
 #BART-------
 options(java.parameters="-Xmx100g")
 library('bartMachine')
