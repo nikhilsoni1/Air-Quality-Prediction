@@ -1,6 +1,6 @@
 # header----
 .libPaths( c( .libPaths(), "/home/sonin/Rlibs") )
-save(list=ls(all=T),file='Analysis2.RData')
+##save(list=ls(all=T),file='Analysis2.RData')
 resp<-"PM2.5"
 wd<-dirname(rstudioapi::getSourceEditorContext()$path)
 setwd(wd)
@@ -13,18 +13,25 @@ install.packages('rJava')
 install.packages('bartMachine')
 install.packages('ModelMetrics')
 install.packages('stats')
+install.packages('earth')
+install.packages('mvtboost')
+install.packages('rpart')
+install.packages('e1071')
 library(ggplot2)
 library(caret)
 library(gam)
 library(rJava)
 library(bartMachine)
+library(earth)
 library(ModelMetrics)
+library(mvtboost)
 library(stats)
 library(corrplot)
 library(Hmisc)
-library(gam)
-# functions----
+library(rpart)
+library(e1071)
 
+# functions----
 completeness<-function(dat)
 {
   dat<-as.data.frame(sapply(dat,as.character))
@@ -88,6 +95,7 @@ df.store$Date<-as.character(df.store$Date)
 df.store$Date<-as.Date(df.store$Date, format='%d-%m-%Y')
 summary(is.na(df.store$Date))
 df<-merge(df.store, df.aot, by=c('Date', 'Station'), all.x = TRUE)  # (3) -> Merging (1) & (2)
+df.all<-merge(df.store, df.aot, by=c('Date', 'Station'), all.x = TRUE)
 df<-df[,-c(9, 11, 12, 13, 14, 15, 16, 18, 19, 20)]
 
 # Additional temperature data and processing  (4)
@@ -128,7 +136,6 @@ df[which(df$PM2.5<0),'PM2.5']<- NA
 summary(df$PM2.5)
 
 #Looks ok. PM 2.5 of 1000 was recorded in Delhi. PM2.5 = 3897.31 can be a outlier.
-#Cleaned bitch!
 
 ##AT
 summary(df$AT)
@@ -145,16 +152,18 @@ df[which(df$AT==631.98),'AT']<- NA
 summary(df$RH)
 df[order(df$RH),'RH']
 df[order(-df$RH),'RH']
+
 #RH should be between 20%-80%(historical). It cannot be 0 as well as greater than 100%.
 
 df[which(df$RH<20 | df$RH>80),'RH']<-NA
-
 
 ##WS
 summary(df$WS)
 df[order(df$WS),'WS']
 df[order(-df$WS),'WS']
+
 #The wind speed vcalues above 30 are considered as mistaken and are deleted since the units are in m/s.
+
 df[which(df$WS>30),'WS']<-NA
 
 ##SR
@@ -241,7 +250,6 @@ plot(pca,type="l")
 summary(pca)
 
 
-
 ## Biplot
 autoplot(prcomp(temppca2),data=temppca,colour="Station",loadings=TRUE,loadings.label=TRUE,loading.label.size=3)
 
@@ -249,9 +257,6 @@ autoplot(prcomp(temppca2),data=temppca,colour="Station",loadings=TRUE,loadings.l
 pca <- prcomp(temppca2,center=TRUE,scale.=TRUE)
 plot(pca,type="l")
 summary(pca)
-
-
-
 
 
 
@@ -282,7 +287,6 @@ library("devtools")
 install_github("easyGgplot2","kassambara")
 library(easyGgplot2)
 library(ggplot2)
-
 
 #GC
 p<-ggplot(df, aes(factor(GC),PM2.5))
@@ -333,7 +337,7 @@ glm3.cv<-list(crossValidate("kfold",10,df.train,glm3,"PM2.5"))
 
 glm.pred<-predict(glm3, df.test)
 glm.pred[is.na(glm.pred)]<-mean(glm.pred,na.rm = T)
-rmse(glm.pred, df.test$PM2.5)
+glm.rmse<-rmse(glm.pred, df.test$PM2.5)
 glm.diag=data.frame(glm3$residuals, glm3$fitted.values)
 colnames(glm.diag)<-c('resid', 'pred')
 plot(x=df.test$PM2.5, y=glm.pred, xlab="Y", ylab="Y-hat", main="Y-hat vs. Y")# Y vs. Y-hat
@@ -368,24 +372,47 @@ df.gam.test<-temp # Removing all the incomplete cases
 gam.pred<-predict(gam3,temp)
 gam.rmse<-rmse(gam.pred,temp$PM2.5)
 
-##CART
+##CART-----------------------------------------------------------
+#Unpruned CART
+form<-as.formula(paste0(names(df.train[9]),"~",paste0(names(df.train[-c(1,9)]),collapse="+")))
+tree.model1<-rpart(formula=form,data=df.train)
+summary(tree.model1)
+install.packages('rpart.plot')
+library('rpart.plot')
+rpart.plot(tree.model1)
+tree.model1.cv<-crossValidate("kfold",10,df.train, tree.model1,"PM2.5")
+
+#Pruned CART
+plotcp(tree.model1,minline=T,lty=3,col=1,upper=c('size','splits','none'))
+tree.model2<-prune(tree.model1, 0.13)
+tree.model2.cv<-crossValidate("kfold",10,df.train, tree.model2,"PM2.5")
+
+#Model Comparison
+RMSEcompare.cart<-data.frame(tree.model1.cv[1],tree.model2.cv[1])
+colnames(RMSEcompare.cart)<-c("CART_model1_rmse","CART_model2_rmse")
+RMSEcompare.cart
+par(mfrow=c(1,1))
+boxplot(RMSEcompare.cart, col = c("blue","red"))
+legend("bottomright",legend=c("CART_model1_rmse","CART_model2_rmse"),col=c("blue","red"),pch=c(19,19), cex = 0.6)
+
+#Model1 better so predicting on Model1
+tree.model1.predict<-predict(tree.model1, df.test)
+tree.model1.rmse<-rmse(tree.model1.predict,df.test$PM2.5)
+tree.model1.rmse
 
 
-<<<<<<< HEAD
-##RandomForest
-install.packages('doParallel')
-library(doParallel)
-registerDoParallel(cores=20)
-=======
+
+
+
 #RandomForest----
 
 library(doParallel)
->>>>>>> ad9d9e6480dda2bd4d0c174be6d3bacbea0707a3
+
 library(foreach)
 library(randomForest)
 library(ModelMetrics)
 temp <- na.omit(temp)
-<<<<<<< HEAD
+
 temp$knum<-sample(1:10,nrow(temp),replace = TRUE)
 temp.train <- temp[!temp$knum==i,-"knum"]
 
@@ -413,81 +440,10 @@ summary(rf)
 
 
 
-crossValidate<-function(cvtype,folds,dataset,model,resp)
-  
-{
-  
-  df<-dataset
-  
-  l <- vector("list", 2)
-  
-  if (cvtype=="kfold")
-    
-  {
-    
-    df$knum<-sample(1:folds,nrow(df),replace = TRUE)
-    
-    rmse_kfold<-0
-    
-    for (i in 1:folds)
-      
-    {
-      
-      df.test<-df[df$knum==i,]
-      
-      df.train<-df[!df$knum==i,]
-      
-      pred<-predict(model,df.test)
-      
-      pred[is.na(pred)]<-mean(pred,na.rm = T)
-      
-      rmse_kfold<-cbind(rmse_kfold,rmse(df.test[,resp],pred))
-      
-    }
-    
-    l[[1]]<-rmse_kfold[,-1]
-    
-    l[[2]]<-mean(rmse_kfold[,-1])
-    
-    return (l)
-    
-  }
-  
-  else if (cvtype=="LOOCV"||cvtype=="loocv")
-    
-  {
-    
-    rmse_loocv<-0
-    
-    for (i in 1:nrow(df))
-      
-    {
-      
-      df.test<-df[i,]
-      
-      df.train<-df[-i,]
-      
-      pred<-predict(model,df.test)
-      
-      pred[is.na(pred)]<-mean(df.train[,resp])
-      
-      rmse_loocv<-cbind(rmse_loocv,rmse(df.test[,resp],pred))
-      
-    }
-    
-    l[[1]]<-rmse_loocv[,-1]
-    
-    l[[2]]<-mean(rmse_loocv[,-1])
-    
-    return(l)
-    
-  }
-  
-}
 
-##BART
+
 options(java.parameters = "-Xmx25g")
-=======
+
 rf <- foreach(ntree=rep(250,4), .combine=combine,.packages = 'randomForest') %dopar% randomForest(temp.train[,-c(1,9)],temp.train$PM2.5,ntree=ntree)
 rf.cv<-crossValidate("kfold",10,temp.train,rf,'PM2.5') 
 rf.predict<-predict(rf,temp.test)
@@ -495,9 +451,10 @@ rf.rmse<-rmse(rf.predict,temp.test$PM2.5)
 rf.rmse
 varImpPlot(rf,sort =TRUE, n.var=min(20, if(is.null(dim(rf$importance)))
   length(rf$importance) else nrow(rf$importance)))
+
 #BART-------
 options(java.parameters="-Xmx100g")
->>>>>>> ad9d9e6480dda2bd4d0c174be6d3bacbea0707a3
+
 library('bartMachine')
 library('rJava')
 set_bart_machine_num_cores(20)
@@ -524,9 +481,110 @@ cov_importance_test(bart_machine_cv,covariates = "Precip")
 cov_importance_test(bart_machine_cv,covariates = "RH")
 cov_importance_test(bart_machine_cv)
 
+##MARS-----------------------------
+#First we build the unpruned model
+df.mars<-df
+df.mars<-na.omit(df.mars)
+rows<-sample(1:nrow(df.mars),0.80*nrow(df.mars),replace = F)
+df.mars.train<-df.mars[rows,]
+df.mars.test<-df.mars[-rows,]
+rm(rows)
+form<-as.formula(paste0(names(df.mars.train[9]),"~",paste0(names(df.mars.train[-c(1,9)]),collapse="+")))
+mars.model1<-earth(formula=form,data=df.mars.train,pmethod="none")
+rm(form)
+summary(mars.model1)
+plotmo(mars.model1, bottom_margin = 1)
+
+mars.model1.cv<-crossValidate("kfold",10,df.mars.train,mars.model1,"PM2.5")
+
+#Now, we compare the model with a pruned MARS model
+form<-as.formula(paste0(names(df.mars.train[9]),"~",paste0(names(df.mars.train[-c(1,9)]),collapse="+")))
+mars.model2<-earth(formula=form,data=df.mars.train)
+rm(form)
+summary(mars.model2)
+plotmo(mars.model2)
+mars.model2.cv<-crossValidate("kfold",10,df.mars.train,mars.model2,"PM2.5")
+
+#Comparing the 2 MARS models
+RMSE<-data.frame(mars.model1.cv[1],mars.model2.cv[1])
+colnames(RMSE)<-c("MARS_model1_rmse","MARS_model2_rmse")
+RMSE
+par(mfrow=c(1,1))
+boxplot(RMSE, col = c("blue","red"))
+legend("bottomright",legend=c("Model1_MARS","Model2_MARS"),col=c("blue","red"),pch=c(19,19), cex = 0.6)
+
+#Since, we can see that the unpruned MARS model (Model1) has much better rmse values 
+#and also it has much less noise. Also, from the plots we can conclude that Model1 fits data well and does not overfit data that much when compared to performance.
+#So, Model1 is selected.
+
+#Prediction and rmseOS
+mars.model1.predict<-predict(mars.model1, df.mars.test)
+mars.model1.rmse<-rmse(mars.model1.predict,df.mars.test$PM2.5)
+mars.model1.rmse
 
 
-##SVM
+##MVTBoost----
+
+df.mvt<-df.all[complete.cases(df.all[,c(9:16)]),]
+rows<-sample(1:nrow(df.mvt),0.80*nrow(df.mvt),replace = F)
+df.mvt.train<-df.mvt[rows,]
+df.mvt.test<-df.mvt[-rows,]
+rm(rows)
+
+Y.train<-df.mvt.train[,c(9:16)]
+X.train<-df.mvt.train[,-c(1,9:20)]
+#Y.train<-scale(Y.train)
+
+Y.test<-df.mvt.test[,c(9:16)]
+X.test<-df.mvt.test[,-c(1,9:20)]
+
+
+mvt<-mvtb(Y=Y.train, X=X.train,
+          shrinkage = 0.01,
+          interaction.depth = 3,
+          n.trees=1000,bag.fraction = 0.5,
+          train.fraction = 0.8,
+          cv.folds=10,
+          mc.cores=20,
+          seednum=9)
+
+yhat<-data.frame(predict(mvt,newdata=X.test))
+colnames(yhat)<-colnames(Y.test)
+#Y.test<-data.frame(scale(Y.test))
+row.names(Y.test)<-NULL
+#(r2 <- var(yhat)/var(Y))
+
+mvt.rmse<-data.frame(matrix(ncol = length(names(yhat)), nrow = 1))
+colnames(mvt.rmse)<-names(yhat)
+for(i in names(yhat))
+{
+  mvt.rmse[,i]<-rmse(yhat[,i],Y.test[,i])
+}
+plot(mvt,response.no=2,predictor.no=4)
+mvtb.perspec(mvt,theta=45)
+
+##SVM------------------
+df.svm<-df
+rows<-sample(1:nrow(df.svm),0.80*nrow(df.svm),replace = F)
+df.svm.train<-df.svm[rows,]
+df.svm.test<-df.svm[-rows,]
+rm(rows)
+form<-as.formula(paste0(names(df.svm.train[9]),"~",paste0(names(df.svm.train[-c(1,9)]),collapse="+")))
+svm.model1<-svm(formula=form,data=df.svm.train, cost = 100, gamma = 0.0001)
+rm(form)
+summary(svm.model1)
+
+svm.model1.predict<-predict(svm.model1, df.svm.test)
+svm.model1.rmse<-rmse(svm.model1.predict,df.svm.test$PM2.5)
+svm.model1.rmse
+
+
+#Final Model Comparison
+rmsefinalcompare<-data.frame(glm.rmse,gam.rmse,tree.model1.rmse,rf.rmse,
+                             bart_predict_for_test_data(bart_machine_cv, xtest, ytest)$rmse,
+                             mars.model1.rmse,svm.model1.rmse)
+colnames(rmsefinalcompare)<-c("rmse_GLM","rmse_GAM","rmse_Tree","rmse_RF","rmse_BART","rmse_MARS","rmse_SVM")
+rmsefinalcompare
 
 
 ##NeuralNet
