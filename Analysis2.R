@@ -1,26 +1,28 @@
 # header----
-#save(list=ls(all=T),file='Analysis2.RData')
-
+.libPaths( c( .libPaths(), "/home/sonin/Rlibs") )
+save(list=ls(all=T),file='Analysis2.RData')
+resp<-"PM2.5"
 wd<-dirname(rstudioapi::getSourceEditorContext()$path)
 setwd(wd)
 load(paste0(wd, '/Analysis2.Rdata'))
 rm(wd)
 
-library(ggplot2)
 install.packages('caret')
-library(caret)
 install.packages('gam')
-library(gam)
 install.packages('rJava')
-library(rJava)
 install.packages('bartMachine')
-library(bartMachine)
 install.packages('ModelMetrics')
-library(ModelMetrics)
 install.packages('stats')
+library(ggplot2)
+library(caret)
+library(gam)
+library(rJava)
+library(bartMachine)
+library(ModelMetrics)
 library(stats)
 library(corrplot)
 library(Hmisc)
+library(gam)
 # functions----
 
 completeness<-function(dat)
@@ -36,6 +38,7 @@ completeness<-function(dat)
 crossValidate<-function(cvtype,folds,dataset,model,resp)
 {
   df<-dataset
+  l <- vector("list", 2)
   if (cvtype=="kfold")
   {
     df$knum<-sample(1:folds,nrow(df),replace = TRUE)
@@ -48,7 +51,9 @@ crossValidate<-function(cvtype,folds,dataset,model,resp)
       pred[is.na(pred)]<-mean(pred,na.rm = T)
       rmse_kfold<-cbind(rmse_kfold,rmse(df.test[,resp],pred))
     }
-    return (mean(rmse_kfold[,-1]))
+    l[[1]]<-rmse_kfold[,-1]
+    l[[2]]<-mean(rmse_kfold[,-1])
+    return (l)
   }
   else if (cvtype=="LOOCV"||cvtype=="loocv")
   {
@@ -61,7 +66,9 @@ crossValidate<-function(cvtype,folds,dataset,model,resp)
       pred[is.na(pred)]<-mean(df.train[,resp])
       rmse_loocv<-cbind(rmse_loocv,rmse(df.test[,resp],pred))
     }
-    return(mean(rmse_loocv[,-1]))
+    l[[1]]<-rmse_loocv[,-1]
+    l[[2]]<-mean(rmse_loocv[,-1])
+    return(l)
   }
 }
 
@@ -91,26 +98,28 @@ df<-merge(df, df.temp, by='Date', all.x=T)  # (5) -> Merging (3) & (4)
 
 df$GC<-0
 df[which(df$Station=='AV'),'GC']<-3
-df[which(df$Station=='IHBAS'),'GC']<-3
+df[which(df$Station=='IHBAS'),'GC']<-0
 df[which(df$Station=='ITO'),'GC']<-3
 df[which(df$Station=='MM'),'GC']<-3
-df[which(df$Station=='NSIT'),'GC']<-0
+df[which(df$Station=='NSIT'),'GC']<-1
 df[which(df$Station=='PUSA'),'GC']<-4
-df[which(df$Station=='RKP'),'GC']<-3
+df[which(df$Station=='RKP'),'GC']<-4
 df[which(df$Station=='LODHI'),'GC']<-3
 df[which(df$Station=='CRRI'),'GC']<-2
-df[which(df$Station=='DTU'),'GC']<-0
+df[which(df$Station=='DTU'),'GC']<-1
 df[which(df$Station=='SIRI'),'GC']<-2
-df[which(df$Station=='AYA'),'GC']<-2                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
+df[which(df$Station=='AYA'),'GC']<-2                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     
 df[which(df$Station=='BC'),'GC']<-3
-df[which(df$Station=='EAN'),'GC']<-0
-df[which(df$Station=='IGI'),'GC']<-0
+df[which(df$Station=='EAN'),'GC']<-1
+df[which(df$Station=='IGI'),'GC']<-1
 df[which(df$Station=='NC'),'GC']<-4
-df[which(df$Station=='PB'),'GC']<-0
+df[which(df$Station=='PB'),'GC']<-1
 df[which(df$Station=='SHAD'),'GC']<-4
 df$GC<-as.factor(df$GC)
 rm(df.aot,df.init,df.store,df.temp)
 summary(df)
+#df$GC<-factor(df$GC, labels = c("Non Forest","Open Forest","Moderate Forest","Dense Forest"))
+
 
 # data cleaning intense----
 ##PM 2.5
@@ -202,9 +211,14 @@ df<-temp
 temp$Events<-as.factor(as.numeric(temp$Events))
 df<-temp
 
+<<<<<<< HEAD
 
 ##EDA
 install.packages('devtools')
+=======
+##EDA----
+install.package('devtools')
+>>>>>>> ad9d9e6480dda2bd4d0c174be6d3bacbea0707a3
 library(devtools)
 ## Cor plot between all numeric variables and using only the complete values
 M <- cor(df[,-c(1,2,14,15)],use="complete.obs")
@@ -284,45 +298,94 @@ p+geom_violin(scale = "count",adjust = 0.8,aes(fill = Events))
 p<-ggplot(df, aes(Station,PM2.5))
 p+geom_violin(scale = "count",adjust = 0.8,aes(fill = Station))
 
+<<<<<<< HEAD
 
 
 
 set.seed(9)
+=======
+>>>>>>> ad9d9e6480dda2bd4d0c174be6d3bacbea0707a3
 rows<-sample(1:nrow(df), 0.80*nrow(df), replace=FALSE)
 df.train<-df[rows,]
 df.test<-df[-rows,]
 rm(rows)
 
-# EDA----
-
-
-
-
-
 # linear model----
 
 df$GC<-as.numeric(df$GC)
-model1<-gam(PM2.5~., data=df.train)
+model1<-glm(PM2.5~WS+WD+AT+RH+SR+BP+Aerosol_Type_Land+TempN+Humid+Precip+Station+GC, data=df)
 summary(model1)
 
 
 #Models---------------------------------------------------
-##GLM
+
+#GLM----
 
 
-##GAM
+glm1<-glm(PM2.5~. -Date,data = df.train)
+glm2<-glm(PM2.5 ~ factor(Events, exclude=c('3','5','7','8','9','11','13')) +factor(Station, exclude=c('AV','AYA','BC','CRRI','DTU','IGI','LODHI','MM','NC','NSIT','PUSA','SIRI'))+WS+BP+TempN,data=df.train)
+glm3<-glm(PM2.5 ~ factor(Station, exclude=c('AV','AYA','BC','CRRI','DTU','IGI','LODHI','MM','NC','NSIT',
+                                            'PUSA','SIRI'))+WS+BP+TempN,data=df.train)
 
+#glm1.cv<-crossValidate("kfold",10,df.train,glm1,"PM2.5")
+#glm2.cv<-list(crossValidate("kfold",10,df.train,glm2,"PM2.5"), crossValidate("loocv",10,df.train,glm2,"PM2.5"))
+glm3.cv<-list(crossValidate("kfold",10,df.train,glm3,"PM2.5"))
+
+glm.pred<-predict(glm3, df.test)
+glm.pred[is.na(glm.pred)]<-mean(glm.pred,na.rm = T)
+rmse(glm.pred, df.test$PM2.5)
+glm.diag=data.frame(glm3$residuals, glm3$fitted.values)
+colnames(glm.diag)<-c('resid', 'pred')
+plot(x=df.test$PM2.5, y=glm.pred, xlab="Y", ylab="Y-hat", main="Y-hat vs. Y")# Y vs. Y-hat
+plot(y=glm3$residuals, x=glm3$fitted.values, xlab="Fitted Values", ylab="Residuals", main="e vs. Y-hat")
+qqnorm(glm3$residuals)
+qqline(glm3$residuals)
+
+##GAM----
+gam1<-gam(PM2.5~. -Date, data=df.train)
+summary(gam1)
+
+form<-as.formula(paste0(resp,"~",paste0("s(",colnames(df.train[,-c(1,2,9,14,15)]),",d=4",")",collapse="+")
+                        ,"+",paste0(colnames(df.train[,c(2,14,15)]),collapse="+"),collapse=""))
+gam2<-gam(formula = form,data=df.train)
+summary(gam2)
+rm(form)
+
+form<-as.formula(paste0(resp,"~",paste0("s(",colnames(df.train[,-c(1,2,9,10,13,14,15)]),",d=4",")",collapse="+")
+                        ,"+",paste0(colnames(df.train[,c(2,14,15)]),collapse="+"),collapse=""))
+gam3<-gam(formula = form, data=df.train)
+summary(gam3)
+rm(form)
+
+gam1.cv=list(crossValidate('kfold',10,df.train,gam1,resp))
+gam2.cv=list(crossValidate('kfold',10,df.train,gam2,resp))
+gam3.cv=list(crossValidate('kfold',10,df.train,gam3,resp))
+
+temp<-df.test[which(df.test$Events!='4'),]
+rownames(temp) <- NULL
+temp<-temp[complete.cases(temp),]
+df.gam.test<-temp # Removing all the incomplete cases
+gam.pred<-predict(gam3,temp)
+gam.rmse<-rmse(gam.pred,temp$PM2.5)
 
 ##CART
 
 
+<<<<<<< HEAD
 ##RandomForest
 install.packages('doParallel')
 library(doParallel)
 registerDoParallel(cores=20)
+=======
+#RandomForest----
+
+library(doParallel)
+>>>>>>> ad9d9e6480dda2bd4d0c174be6d3bacbea0707a3
 library(foreach)
 library(randomForest)
+library(ModelMetrics)
 temp <- na.omit(temp)
+<<<<<<< HEAD
 temp$knum<-sample(1:10,nrow(temp),replace = TRUE)
 temp.train <- temp[!temp$knum==i,-"knum"]
 
@@ -424,28 +487,44 @@ crossValidate<-function(cvtype,folds,dataset,model,resp)
 
 ##BART
 options(java.parameters = "-Xmx25g")
+=======
+rf <- foreach(ntree=rep(250,4), .combine=combine,.packages = 'randomForest') %dopar% randomForest(temp.train[,-c(1,9)],temp.train$PM2.5,ntree=ntree)
+rf.cv<-crossValidate("kfold",10,temp.train,rf,'PM2.5') 
+rf.predict<-predict(rf,temp.test)
+rf.rmse<-rmse(rf.predict,temp.test$PM2.5)
+rf.rmse
+varImpPlot(rf,sort =TRUE, n.var=min(20, if(is.null(dim(rf$importance)))
+  length(rf$importance) else nrow(rf$importance)))
+#BART-------
+options(java.parameters="-Xmx100g")
+>>>>>>> ad9d9e6480dda2bd4d0c174be6d3bacbea0707a3
 library('bartMachine')
-#library('rJava')
+library('rJava')
 set_bart_machine_num_cores(20)
 
-Y<-df$PM2.5
-X<-df[,-c(1,9)]
-
-
-
-
+Y<-df.train$PM2.5
+X<-df.train[,-c(1,9)]
 
 bartModel <- bartMachine(X, Y, use_missing_data = TRUE,serialize = T)
 summary(bartModel)
-
 rmse_kfold<-k_fold_cv(X, Y, k_folds = 10, use_missing_data = TRUE)
-
 bart_machine_cv <- bartMachineCV(X, Y,use_missing_data = TRUE,serialize = T)
-
-investigate_var_importance(bartModel, num_replicates_for_avg = 20)
-
+xtest <- df.test[,-c(1,9)]
+ytest <- df.test$PM2.5
+bart.pred<-bart_predict_for_test_data(bart_machine_cv, xtest, ytest)
+bart_predict_for_test_data(bart_machine_cv, xtest, ytest)$rmse
+investigate_var_importance(bart_machine_cv, num_replicates_for_avg = 20)
 plot_y_vs_yhat(bart_machine_cv, credible_intervals = TRUE)
 plot_y_vs_yhat(bart_machine_cv, prediction_intervals = TRUE)
+pd_plot(bart_machine_cv,j='BP')
+pd_plot(bart_machine_cv,j='TempN')
+pd_plot(bart_machine_cv,j='SR')
+cov_importance_test(bart_machine_cv,covariates = "Humid")
+cov_importance_test(bart_machine_cv,covariates = "Precip")
+cov_importance_test(bart_machine_cv,covariates = "RH")
+cov_importance_test(bart_machine_cv)
+
+
 
 ##SVM
 
