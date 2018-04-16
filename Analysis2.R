@@ -220,14 +220,14 @@ df<-temp
 temp$Events<-as.factor(as.numeric(temp$Events))
 df<-temp
 
-<<<<<<< HEAD
+
 
 ##EDA
 install.packages('devtools')
-=======
+
 ##EDA----
 install.package('devtools')
->>>>>>> ad9d9e6480dda2bd4d0c174be6d3bacbea0707a3
+
 library(devtools)
 ## Cor plot between all numeric variables and using only the complete values
 M <- cor(df[,-c(1,2,14,15)],use="complete.obs")
@@ -302,13 +302,12 @@ p+geom_violin(scale = "count",adjust = 0.8,aes(fill = Events))
 p<-ggplot(df, aes(Station,PM2.5))
 p+geom_violin(scale = "count",adjust = 0.8,aes(fill = Station))
 
-<<<<<<< HEAD
+
 
 
 
 set.seed(9)
-=======
->>>>>>> ad9d9e6480dda2bd4d0c174be6d3bacbea0707a3
+
 rows<-sample(1:nrow(df), 0.80*nrow(df), replace=FALSE)
 df.train<-df[rows,]
 df.test<-df[-rows,]
@@ -322,6 +321,10 @@ summary(model1)
 
 
 #Models---------------------------------------------------
+#Null model
+null.model<-lm(PM2.5 ~ 1, data = df, REML = FALSE)
+null.model.pred<-predict(null.model,df.test)
+null.model.rmse<-rmse(null.model.pred,df.test$PM2.5)
 
 #GLM----
 
@@ -644,3 +647,7 @@ lines(xfit, yfit, col="blue", lwd=2)
 d<-density(df$PM2.5)
 plot(d, xlim = c(-10,1000), main = 'Kernel Density of PM2.5')
 polygon(d, col="red", border="blue") 
+
+
+p<-ggplot(df, aes(Station,PM2.5))
+p+geom_boxplot(adjust = 0.8,aes(fill = Station))+ylim(-10,500)
