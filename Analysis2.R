@@ -417,7 +417,7 @@ varImpPlot(rf,sort =TRUE, n.var=min(20, if(is.null(dim(rf$importance)))
 options(java.parameters="-Xmx100g")
 library('bartMachine')
 library('rJava')
-set_bart_machine_num_cores(4)
+set_bart_machine_num_cores(20)
 
 Y<-df.train$PM2.5
 X<-df.train[,-c(1,9)]
@@ -437,7 +437,7 @@ pd_plot(bart_machine_cv,j='BP')
 pd_plot(bart_machine_cv,j='TempN')
 pd_plot(bart_machine_cv,j='SR')
 cov_importance_test(bart_machine_cv,covariates = "Humid")
-cov_importance_test(bart_machine_cv,covariates = "Precip")
+ cov_importance_test(bart_machine_cv,covariates = "Precip")
 cov_importance_test(bart_machine_cv,covariates = "RH")
 cov_importance_test(bart_machine_cv)
 
@@ -549,9 +549,3 @@ rmsefinalcompare<-data.frame(glm.rmse,gam.rmse,tree.model1.rmse,rf.rmse,
                              mars.model1.rmse,svm.model1.rmse)
 colnames(rmsefinalcompare)<-c("rmse_GLM","rmse_GAM","rmse_Tree","rmse_RF","rmse_BART","rmse_MARS","rmse_SVM")
 rmsefinalcompare
-
-sd(glm3.cv[[1]][[1]])
-sd(gam3.cv[[1]][[1]])
-sd(tree.model1.cv[[1]])
-sd(rf.cv[[1]])
-sd(mars.model1.cv[[1]])
