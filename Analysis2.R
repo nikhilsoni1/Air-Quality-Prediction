@@ -459,7 +459,7 @@ pd_plot(bart_machine_cv,j='BP')
 pd_plot(bart_machine_cv,j='TempN')
 pd_plot(bart_machine_cv,j='SR')
 cov_importance_test(bart_machine_cv,covariates = "Humid")
- cov_importance_test(bart_machine_cv,covariates = "Precip")
+cov_importance_test(bart_machine_cv,covariates = "Precip")
 cov_importance_test(bart_machine_cv,covariates = "RH")
 cov_importance_test(bart_machine_cv)
 
