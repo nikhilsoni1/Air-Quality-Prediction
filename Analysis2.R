@@ -224,9 +224,11 @@ df<-temp
 ##EDA----
 
 ## Cor plot between all numeric variables and using only the complete values
-M <- cor(df[,-c(1,2,14,15)],use="complete.obs")
-corrplot(M)
 
+M <- cor(df[,-c(1,2,14,15)],use="complete.obs")
+png("df_corr.png", width = 4, height = 4, units = 'in', res = 300)
+corrplot(M)
+dev.off()
 ## we see that AT is highly correlated to TempN and Humidity is highly correlated to AT. 
 summary(is.na(prdtion))
 install_github("ggbiplot","vqv")
@@ -330,11 +332,10 @@ colnames(glm.diag)<-c('resid', 'pred')
 plot(x=df.test$PM2.5, y=glm.pred, xlab="Y", ylab="Y-hat", main="Y-hat vs. Y")# Y vs. Y-hat
 plot(y=glm3$residuals, x=glm3$fitted.values, xlab="Fitted Values", ylab="Residuals", main="e vs. Y-hat")
 
-png("Plot3.png", width = 4, height = 4, units = 'in', res = 300)
+png("GLM_QQ_Resid.png", width = 4, height = 4, units = 'in', res = 300)
 qqnorm(glm3$residuals, main="General Linear Model")
 qqline(glm3$residuals)
 dev.off()
-
 
 ##GAM----
 gam1<-gam(PM2.5~. -Date, data=df.train)
@@ -362,6 +363,11 @@ temp<-temp[complete.cases(temp),]
 df.gam.test<-temp # Removing all the incomplete cases
 gam.pred<-predict(gam3,temp)
 gam.rmse<-rmse(gam.pred,temp$PM2.5)
+
+png("GAM_QQ_Resid.png", width = 4, height = 4, units = 'in', res = 300)
+qqnorm(gam3$residuals, main="General Additive Model")
+qqline(gam3$residuals)
+dev.off()
 
 ##CART-----------------------------------------------------------
 #Unpruned CART
@@ -411,7 +417,7 @@ varImpPlot(rf,sort =TRUE, n.var=min(20, if(is.null(dim(rf$importance)))
 options(java.parameters="-Xmx100g")
 library('bartMachine')
 library('rJava')
-set_bart_machine_num_cores(20)
+set_bart_machine_num_cores(4)
 
 Y<-df.train$PM2.5
 X<-df.train[,-c(1,9)]
@@ -435,6 +441,8 @@ cov_importance_test(bart_machine_cv,covariates = "Precip")
 cov_importance_test(bart_machine_cv,covariates = "RH")
 cov_importance_test(bart_machine_cv)
 
+qqnorm(bart_machine_cv$residuals)
+qqline(bart_machine_cv$residuals)
 
 ##MARS-----------------------------
 #First we build the unpruned model
