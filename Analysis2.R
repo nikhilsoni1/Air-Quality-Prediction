@@ -404,14 +404,38 @@ library(doParallel)
 library(foreach)
 library(randomForest)
 library(ModelMetrics)
-temp <- na.omit(temp)
-rf <- foreach(ntree=rep(250,4), .combine=combine,.packages = 'randomForest') %dopar% randomForest(temp.train[,-c(1,9)],temp.train$PM2.5,ntree=ntree)
-rf.cv<-crossValidate("kfold",10,temp.train,rf,'PM2.5') 
-rf.predict<-predict(rf,temp.test)
-rf.rmse<-rmse(rf.predict,temp.test$PM2.5)
+df.rf <- df
+df.rf<-na.omit(df.rf)
+set.seed(9)
+rows<-sample(1:nrow(df.rf),0.80*nrow(df.rf),replace = F)
+df.rf.train<-df.rf[rows,-c(1,2)]
+df.rf.test<-df.rf[-rows,-c(1,2)]
+rm(rows)
+rf <- foreach(ntree=rep(250,4), .combine=combine,.packages = 'randomForest') %dopar% randomForest(df.rf.train[,-7],df.rf.train$PM2.5,ntree=ntree)
+rf.cv<-crossValidate("kfold",10,df.rf.train,rf,'PM2.5') 
+rf.predict<-predict(rf,df.rf.test)
+rf.rmse<-rmse(rf.predict,df.rf.test$PM2.5)
 rf.rmse
 varImpPlot(rf,sort =TRUE, n.var=min(20, if(is.null(dim(rf$importance)))
   length(rf$importance) else nrow(rf$importance)))
+
+
+
+resid.rf<- (df.rf.train$PM2.5-rf$predicted)
+qqnorm(resid.rf)
+qqline(resid.rf)
+
+rf1 <- foreach(ntree=rep(250,4), .combine=combine,.packages = 'randomForest') %dopar% randomForest(df.rf.train[,-c(4,7,8,10,11,12,13)],df.rf.train$PM2.5,ntree=ntree)
+rf1.cv<-crossValidate("kfold",10,df.rf.train,rf,'PM2.5') 
+rf1.predict<-predict(rf1,df.rf.test)
+rf1.rmse<-rmse(rf1.predict,df.rf.test$PM2.5)
+rf1.rmse
+varImpPlot(rf1,sort =TRUE, n.var=min(20, if(is.null(dim(rf$importance)))
+  length(rf$importance) else nrow(rf$importance)))
+
+resid.rf1<- (df.rf.train$PM2.5-rf1$predicted)
+qqnorm(resid.rf1)
+qqline(resid.rf1)
 
 
 #BART-------
@@ -438,7 +462,7 @@ pd_plot(bart_machine_cv,j='BP')
 pd_plot(bart_machine_cv,j='TempN')
 pd_plot(bart_machine_cv,j='SR')
 cov_importance_test(bart_machine_cv,covariates = "Humid")
- cov_importance_test(bart_machine_cv,covariates = "Precip")
+cov_importance_test(bart_machine_cv,covariates = "Precip")
 cov_importance_test(bart_machine_cv,covariates = "RH")
 cov_importance_test(bart_machine_cv)
 
