@@ -521,9 +521,9 @@ legend("bottomright",legend=c("Model1_MARS","Model2_MARS"),col=c("blue","red"),p
 #So, Model1 is selected.
 
 #Prediction and rmseOS
-mars.model1.predict<-predict(mars.model1, df.mars.test)
-mars.model1.rmse<-rmse(mars.model1.predict,df.mars.test$PM2.5)
-mars.model1.rmse
+mars.model2.predict<-predict(mars.model2, df.mars.test)
+mars.model2.rmse<-rmse(mars.model2.predict,df.mars.test$PM2.5)
+mars.model2.rmse
 
 
 ##MVTBoost----
@@ -585,7 +585,7 @@ svm.model1.rmse
 #Final Model Comparison
 rmsefinalcompare<-data.frame(glm.rmse,gam.rmse,tree.model1.rmse,rf.rmse,
                              bart_predict_for_test_data(bart_machine_cv, xtest, ytest)$rmse,
-                             mars.model1.rmse,svm.model1.rmse)
+                             mars.model2.rmse,svm.model1.rmse)
 colnames(rmsefinalcompare)<-c("rmse_GLM","rmse_GAM","rmse_Tree","rmse_RF","rmse_BART","rmse_MARS","rmse_SVM")
 rmsefinalcompare
 
