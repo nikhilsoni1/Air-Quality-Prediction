@@ -413,6 +413,7 @@ rf.rmse
 varImpPlot(rf,sort =TRUE, n.var=min(20, if(is.null(dim(rf$importance)))
   length(rf$importance) else nrow(rf$importance)))
 
+
 #BART-------
 options(java.parameters="-Xmx100g")
 library('bartMachine')
@@ -448,6 +449,7 @@ qqline(bart_machine_cv$residuals)
 #First we build the unpruned model
 df.mars<-df
 df.mars<-na.omit(df.mars)
+set.seed(9)
 rows<-sample(1:nrow(df.mars),0.80*nrow(df.mars),replace = F)
 df.mars.train<-df.mars[rows,]
 df.mars.test<-df.mars[-rows,]
@@ -474,7 +476,7 @@ colnames(RMSE)<-c("MARS_model1_rmse","MARS_model2_rmse")
 RMSE
 par(mfrow=c(1,1))
 boxplot(RMSE, col = c("blue","red"))
-legend("bottomright",legend=c("Model1_MARS","Model2_MARS"),col=c("blue","red"),pch=c(19,19), cex = 0.6)
+legend("bottomright",legend=c("Model1_MARS","Model2_MARS"),col=c("blue","red"),pch=c(19,19), cex = 0.4)
 
 #Since, we can see that the unpruned MARS model (Model1) has much better rmse values 
 #and also it has much less noise. Also, from the plots we can conclude that Model1 fits data well and does not overfit data that much when compared to performance.
@@ -528,6 +530,7 @@ mvtb.perspec(mvt,theta=45)
 
 ##SVM------------------
 df.svm<-df
+set.seed(9)
 rows<-sample(1:nrow(df.svm),0.80*nrow(df.svm),replace = F)
 df.svm.train<-df.svm[rows,]
 df.svm.test<-df.svm[-rows,]
