@@ -411,7 +411,7 @@ rows<-sample(1:nrow(df.rf),0.80*nrow(df.rf),replace = F)
 df.rf.train<-df.rf[rows,-c(1,2)]
 df.rf.test<-df.rf[-rows,-c(1,2)]
 rm(rows)
-rf <- foreach(ntree=rep(250,4), .combine=combine,.packages = 'randomForest') %dopar% randomForest(df.rf.train[,-7],df.rf.train$PM2.5,ntree=ntree)
+rf <- foreach(ntree=rep(250,4), .combine=combine,.packages = 'randomForest') %dopar% randomForest(df.rf.train[,-7],df.rf.train$PM2.5,ntree=ntree, importance = TRUE)
 rf.cv<-crossValidate("kfold",10,df.rf.train,rf,'PM2.5') 
 rf.predict<-predict(rf,df.rf.test)
 rf.rmse<-rmse(rf.predict,df.rf.test$PM2.5)
@@ -419,21 +419,34 @@ rf.rmse
 varImpPlot(rf,sort =TRUE, n.var=min(20, if(is.null(dim(rf$importance)))
   length(rf$importance) else nrow(rf$importance)))
 
+
+
 resid.rf<- (df.rf.train$PM2.5-rf$predicted)
 qqnorm(resid.rf)
 qqline(resid.rf)
 
-rf1 <- foreach(ntree=rep(250,4), .combine=combine,.packages = 'randomForest') %dopar% randomForest(df.rf.train[,-c(4,7,8,10,11,12,13)],df.rf.train$PM2.5,ntree=ntree)
-rf1.cv<-crossValidate("kfold",10,df.rf.train,rf,'PM2.5') 
-rf1.predict<-predict(rf1,df.rf.test)
-rf1.rmse<-rmse(rf1.predict,df.rf.test$PM2.5)
-rf1.rmse
-varImpPlot(rf1,sort =TRUE, n.var=min(20, if(is.null(dim(rf$importance)))
-  length(rf$importance) else nrow(rf$importance)))
-
-resid.rf1<- (df.rf.train$PM2.5-rf1$predicted)
-qqnorm(resid.rf1)
-qqline(resid.rf1)
+imp <- importance(rf)
+impvar <- rownames(imp)[order(imp[, 1], decreasing=TRUE)]
+op <- par(mfrow=c(2, 3))
+for (i in seq_along(impvar)) {
+  partialPlot(rf, df.rf.train, impvar[i], xlab=impvar[i],
+              main=paste("Partial Dependence on", impvar[i]),
+              ylim=c(0, 1000))
+}
+par(op)
+par(mfrow=c(2,3))
+partialPlot(rf, df.rf.test,"SR", plot = TRUE, main = 
+                        "Partial Dependence Plot of SR", xlab = "SR", ylim(0,100))
+partialPlot(rf, df.rf.test,"BP", plot = TRUE, main = 
+              "Partial Dependence Plot of BP", xlab = "BP", ylim(0,1000))
+partialPlot(rf, df.rf.test,"WS", plot = TRUE, main = 
+              "Partial Dependence Plot of WS", xlab = "WS", ylim(0,1000))
+partialPlot(rf, df.rf.test,"TempN", plot = TRUE, main = 
+              "Partial Dependence Plot of TempN", xlab = "TempN", ylim(0,1000))
+partialPlot(rf, df.rf.test,"AT", plot = TRUE, main = 
+              "Partial Dependence Plot of AT", xlab = "AT", ylim(0,1000))
+partialPlot(rf, df.rf.test,"WD", plot = TRUE, main = 
+              "Partial Dependence Plot of WD", xlab = "WD", ylim(0,1000))
 
 #BART-------
 options(java.parameters="-Xmx100g")
