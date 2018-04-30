@@ -300,7 +300,7 @@ p+geom_violin(scale = "count",adjust = 0.8,aes(fill = Events))
 
 #Stations
 p<-ggplot(df, aes(Station,PM2.5))
-p+geom_violin(scale = "count",adjust = 0.8,aes(fill = Station))
+p+theme(axis.text.x = element_text(angle=60, hjust=1))+geom_violin(scale = "count",adjust = 0.8,aes(fill = Station))+ylim(c(-10,500))
 
 
 
@@ -455,6 +455,20 @@ rf.rmse
 varImpPlot(rf,sort =TRUE, n.var=min(20, if(is.null(dim(rf$importance)))
   length(rf$importance) else nrow(rf$importance)))
 
+
+
+rf.resid<-temp.train$PM2.5-rf$predicted
+resid.rf<-temp.test$PM2.5-rf.predict
+png(file='rf_diagnostics.png',width=10,height=10,units='in',res=300)
+par(mfrow=c(2,2))
+plot(x=rf.predict,y=temp.test$PM2.5,xlab="Y-hat",ylab="Y", main="Y-hat vs. Y")# Y vs. Y-hat
+plot(y=temp.train$PM2.5, x=rf$predicted, xlab="Fitted Values", ylab="Y", main="Y vs. Fitted values")
+plot(y=rf.resid, x=rf$predicted, xlab="Fitted Values", ylab="Residuals", main="e vs. Y-hat")
+abline(h=0)
+qqnorm(rf.resid)
+qqline(rf.resid)
+dev.off()
+
 #BART-------
 options(java.parameters="-Xmx100g")
 
@@ -473,12 +487,23 @@ xtest <- df.test[,-c(1,9)]
 ytest <- df.test$PM2.5
 bart.pred<-bart_predict_for_test_data(bart_machine_cv, xtest, ytest)
 bart_predict_for_test_data(bart_machine_cv, xtest, ytest)$rmse
-investigate_var_importance(bart_machine_cv, num_replicates_for_avg = 20)
+investigate_var_importance(bart_machine_cv, num_replicates_for_avg = 20, cex = 1.2)
 plot_y_vs_yhat(bart_machine_cv, credible_intervals = TRUE)
 plot_y_vs_yhat(bart_machine_cv, prediction_intervals = TRUE)
 pd_plot(bart_machine_cv,j='BP')
-pd_plot(bart_machine_cv,j='TempN')
+pd_plot(bart_machine_cv,j='Events')
 pd_plot(bart_machine_cv,j='SR')
+for(i in pd){
+  print(i)
+  png(file=paste0(i,'_pd.png'), width= 10, height = 10, units = 'in', res = 300)
+  pd_plot(bart_machine_cv,j=i)
+  dev.off()
+  cat('\014')
+}
+pd
+pd<-pd[-8]
+pd<-pd['Events_2']
+
 cov_importance_test(bart_machine_cv,covariates = "Humid")
 cov_importance_test(bart_machine_cv,covariates = "Precip")
 cov_importance_test(bart_machine_cv,covariates = "RH")
