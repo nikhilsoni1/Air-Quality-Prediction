@@ -17,6 +17,7 @@ install.packages('earth')
 install.packages('mvtboost')
 install.packages('rpart')
 install.packages('e1071')
+library(corrplot)
 library(ggplot2)
 library(caret)
 library(gam)
@@ -226,13 +227,17 @@ df<-temp
 install.packages('devtools')
 
 ##EDA----
+
 install.package('devtools')
 
 library(devtools)
-## Cor plot between all numeric variables and using only the complete values
-M <- cor(df[,-c(1,2,14,15)],use="complete.obs")
-corrplot(M)
 
+## Cor plot between all numeric variables and using only the complete values
+
+M <- cor(df[,-c(1,2,14,15)],use="complete.obs")
+png("df_corr.png", width = 4, height = 4, units = 'in', res = 300)
+corrplot(M)
+dev.off()
 ## we see that AT is highly correlated to TempN and Humidity is highly correlated to AT. 
 summary(is.na(prdtion))
 install_github("ggbiplot","vqv")
@@ -345,8 +350,11 @@ glm.diag=data.frame(glm3$residuals, glm3$fitted.values)
 colnames(glm.diag)<-c('resid', 'pred')
 plot(x=df.test$PM2.5, y=glm.pred, xlab="Y", ylab="Y-hat", main="Y-hat vs. Y")# Y vs. Y-hat
 plot(y=glm3$residuals, x=glm3$fitted.values, xlab="Fitted Values", ylab="Residuals", main="e vs. Y-hat")
-qqnorm(glm3$residuals)
+
+png("GLM_QQ_Resid.png", width = 4, height = 4, units = 'in', res = 300)
+qqnorm(glm3$residuals, main="General Linear Model")
 qqline(glm3$residuals)
+dev.off()
 
 ##GAM----
 gam1<-gam(PM2.5~. -Date, data=df.train)
@@ -374,6 +382,11 @@ temp<-temp[complete.cases(temp),]
 df.gam.test<-temp # Removing all the incomplete cases
 gam.pred<-predict(gam3,temp)
 gam.rmse<-rmse(gam.pred,temp$PM2.5)
+
+png("GAM_QQ_Resid.png", width = 4, height = 4, units = 'in', res = 300)
+qqnorm(gam3$residuals, main="General Additive Model")
+qqline(gam3$residuals)
+dev.off()
 
 ##CART-----------------------------------------------------------
 #Unpruned CART
@@ -414,6 +427,7 @@ library(doParallel)
 library(foreach)
 library(randomForest)
 library(ModelMetrics)
+
 temp <- na.omit(temp)
 
 temp$knum<-sample(1:10,nrow(temp),replace = TRUE)
@@ -451,9 +465,23 @@ rf <- foreach(ntree=rep(250,4), .combine=combine,.packages = 'randomForest') %do
 rf.cv<-crossValidate("kfold",10,temp.train,rf,'PM2.5') 
 rf.predict<-predict(rf,temp.test)
 rf.rmse<-rmse(rf.predict,temp.test$PM2.5)
+
+df.rf <- df
+df.rf<-na.omit(df.rf)
+set.seed(9)
+rows<-sample(1:nrow(df.rf),0.80*nrow(df.rf),replace = F)
+df.rf.train<-df.rf[rows,-c(1,2)]
+df.rf.test<-df.rf[-rows,-c(1,2)]
+rm(rows)
+rf <- foreach(ntree=rep(250,4), .combine=combine,.packages = 'randomForest') %dopar% randomForest(df.rf.train[,-7],df.rf.train$PM2.5,ntree=ntree)
+rf.cv<-crossValidate("kfold",10,df.rf.train,rf,'PM2.5') 
+rf.predict<-predict(rf,df.rf.test)
+rf.rmse<-rmse(rf.predict,df.rf.test$PM2.5)
+
 rf.rmse
 varImpPlot(rf,sort =TRUE, n.var=min(20, if(is.null(dim(rf$importance)))
   length(rf$importance) else nrow(rf$importance)))
+
 
 
 
@@ -468,6 +496,23 @@ abline(h=0)
 qqnorm(rf.resid)
 qqline(rf.resid)
 dev.off()
+
+resid.rf<- (df.rf.train$PM2.5-rf$predicted)
+qqnorm(resid.rf)
+qqline(resid.rf)
+
+rf1 <- foreach(ntree=rep(250,4), .combine=combine,.packages = 'randomForest') %dopar% randomForest(df.rf.train[,-c(4,7,8,10,11,12,13)],df.rf.train$PM2.5,ntree=ntree)
+rf1.cv<-crossValidate("kfold",10,df.rf.train,rf,'PM2.5') 
+rf1.predict<-predict(rf1,df.rf.test)
+rf1.rmse<-rmse(rf1.predict,df.rf.test$PM2.5)
+rf1.rmse
+varImpPlot(rf1,sort =TRUE, n.var=min(20, if(is.null(dim(rf$importance)))
+  length(rf$importance) else nrow(rf$importance)))
+
+resid.rf1<- (df.rf.train$PM2.5-rf1$predicted)
+qqnorm(resid.rf1)
+qqline(resid.rf1)
+
 
 #BART-------
 options(java.parameters="-Xmx100g")
@@ -509,10 +554,14 @@ cov_importance_test(bart_machine_cv,covariates = "Precip")
 cov_importance_test(bart_machine_cv,covariates = "RH")
 cov_importance_test(bart_machine_cv)
 
+qqnorm(bart_machine_cv$residuals)
+qqline(bart_machine_cv$residuals)
+
 ##MARS-----------------------------
 #First we build the unpruned model
 df.mars<-df
 df.mars<-na.omit(df.mars)
+set.seed(9)
 rows<-sample(1:nrow(df.mars),0.80*nrow(df.mars),replace = F)
 df.mars.train<-df.mars[rows,]
 df.mars.test<-df.mars[-rows,]
@@ -539,7 +588,7 @@ colnames(RMSE)<-c("MARS_model1_rmse","MARS_model2_rmse")
 RMSE
 par(mfrow=c(1,1))
 boxplot(RMSE, col = c("blue","red"))
-legend("bottomright",legend=c("Model1_MARS","Model2_MARS"),col=c("blue","red"),pch=c(19,19), cex = 0.6)
+legend("bottomright",legend=c("Model1_MARS","Model2_MARS"),col=c("blue","red"),pch=c(19,19), cex = 0.4)
 
 #Since, we can see that the unpruned MARS model (Model1) has much better rmse values 
 #and also it has much less noise. Also, from the plots we can conclude that Model1 fits data well and does not overfit data that much when compared to performance.
@@ -593,6 +642,7 @@ mvtb.perspec(mvt,theta=45)
 
 ##SVM------------------
 df.svm<-df
+set.seed(9)
 rows<-sample(1:nrow(df.svm),0.80*nrow(df.svm),replace = F)
 df.svm.train<-df.svm[rows,]
 df.svm.test<-df.svm[-rows,]
@@ -604,6 +654,7 @@ summary(svm.model1)
 
 svm.model1.predict<-predict(svm.model1, df.svm.test)
 svm.model1.rmse<-rmse(svm.model1.predict,df.svm.test$PM2.5)
+svm.cv<-crossValidate('kfold',10,df.svm.train,svm.model1,"PM2.5")
 svm.model1.rmse
 
 
@@ -613,6 +664,7 @@ rmsefinalcompare<-data.frame(glm.rmse,gam.rmse,tree.model1.rmse,rf.rmse,
                              mars.model2.rmse,svm.model1.rmse)
 colnames(rmsefinalcompare)<-c("rmse_GLM","rmse_GAM","rmse_Tree","rmse_RF","rmse_BART","rmse_MARS","rmse_SVM")
 rmsefinalcompare
+
 
 
 ##NeuralNet
@@ -676,3 +728,4 @@ polygon(d, col="red", border="blue")
 
 p<-ggplot(df, aes(Station,PM2.5))
 p+geom_boxplot(adjust = 0.8,aes(fill = Station))+ylim(-10,500)
+
