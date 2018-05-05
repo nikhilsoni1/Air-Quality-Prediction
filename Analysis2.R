@@ -221,7 +221,16 @@ df<-temp
 temp$Events<-as.factor(as.numeric(temp$Events))
 df<-temp
 
+
+
+##EDA
+install.packages('devtools')
+
 ##EDA----
+
+install.package('devtools')
+
+library(devtools)
 
 ## Cor plot between all numeric variables and using only the complete values
 
@@ -296,7 +305,13 @@ p+geom_violin(scale = "count",adjust = 0.8,aes(fill = Events))
 
 #Stations
 p<-ggplot(df, aes(Station,PM2.5))
-p+geom_violin(scale = "count",adjust = 0.8,aes(fill = Station))
+p+theme(axis.text.x = element_text(angle=60, hjust=1))+geom_violin(scale = "count",adjust = 0.8,aes(fill = Station))+ylim(c(-10,500))
+
+
+
+
+
+set.seed(9)
 
 rows<-sample(1:nrow(df), 0.80*nrow(df), replace=FALSE)
 df.train<-df[rows,]
@@ -311,6 +326,10 @@ summary(model1)
 
 
 #Models---------------------------------------------------
+#Null model
+null.model<-lm(PM2.5 ~ 1, data = df, REML = FALSE)
+null.model.pred<-predict(null.model,df.test)
+null.model.rmse<-rmse(null.model.pred,df.test$PM2.5)
 
 #GLM----
 
@@ -398,12 +417,55 @@ tree.model1.rmse<-rmse(tree.model1.predict,df.test$PM2.5)
 tree.model1.rmse
 
 
+
+
+
 #RandomForest----
 
 library(doParallel)
+
 library(foreach)
 library(randomForest)
 library(ModelMetrics)
+
+temp <- na.omit(temp)
+
+temp$knum<-sample(1:10,nrow(temp),replace = TRUE)
+temp.train <- temp[!temp$knum==i,-"knum"]
+
+temp.train$knum<- sample(1:10,nrow(temp.train),replace = TRUE)
+rmse_kfold<-0
+for (i in 1:folds)
+{
+  df.test<-temp.train[temp.train$knum==i,]
+  df.train<-temp.train[!temp.train$knum==i,]
+  pred<-predict(model,df.test)
+  pred[is.na(pred)]<-mean(pred,na.rm = T)
+  rmse_kfold<-cbind(rmse_kfold,rmse(df.test[,resp],pred))
+}
+sample <- 
+x <- temp[,-c(1,9)]
+y<-temp[,9]
+library(foreach)
+library(randomForest)
+rf <- foreach(ntree=rep(250,4), .combine=combine,.packages = 'randomForest') %dopar% randomForest(PM2.5~. ,ntree=ntree,na.action=na.omit, data= df.train)
+rf1<-randomForest(PM2.5 ~ . , data = df.train, na.action = na.omit)
+library(ModelMetrics)
+crossValidate("kfold",10,df.train,rf1,"PM2.5")
+rf
+summary(rf)
+
+
+
+
+
+options(java.parameters = "-Xmx25g")
+
+rf <- foreach(ntree=rep(250,4), .combine=combine,.packages = 'randomForest') %dopar% randomForest(temp.train[,-c(1,9)],temp.train$PM2.5,ntree=ntree)
+rf.cv<-crossValidate("kfold",10,temp.train,rf,'PM2.5') 
+rf.predict<-predict(rf,temp.test)
+rf.rmse<-rmse(rf.predict,temp.test$PM2.5)
+
 df.rf <- df
 df.rf<-na.omit(df.rf)
 set.seed(9)
@@ -415,12 +477,25 @@ rf <- foreach(ntree=rep(250,4), .combine=combine,.packages = 'randomForest') %do
 rf.cv<-crossValidate("kfold",10,df.rf.train,rf,'PM2.5') 
 rf.predict<-predict(rf,df.rf.test)
 rf.rmse<-rmse(rf.predict,df.rf.test$PM2.5)
+
 rf.rmse
 varImpPlot(rf,sort =TRUE, n.var=min(20, if(is.null(dim(rf$importance)))
   length(rf$importance) else nrow(rf$importance)))
 
 
+rf.resid<-temp.train$PM2.5-rf$predicted
+resid.rf<-temp.test$PM2.5-rf.predict
+png(file='rf_diagnostics.png',width=10,height=10,units='in',res=300)
+par(mfrow=c(2,2))
+plot(x=rf.predict,y=temp.test$PM2.5,xlab="Y-hat",ylab="Y", main="Y-hat vs. Y")# Y vs. Y-hat
+plot(y=temp.train$PM2.5, x=rf$predicted, xlab="Fitted Values", ylab="Y", main="Y vs. Fitted values")
+plot(y=rf.resid, x=rf$predicted, xlab="Fitted Values", ylab="Residuals", main="e vs. Y-hat")
+abline(h=0)
+qqnorm(rf.resid)
+qqline(rf.resid)
+dev.off()
 
+>>>>>>> a5d934973acc04ff7292b650651701fd4bb6af1d
 resid.rf<- (df.rf.train$PM2.5-rf$predicted)
 qqnorm(resid.rf)
 qqline(resid.rf)
@@ -448,8 +523,10 @@ partialPlot(rf, df.rf.test,"AT", plot = TRUE, main =
 partialPlot(rf, df.rf.test,"WD", plot = TRUE, main = 
               "Partial Dependence Plot of WD", xlab = "WD", ylim(0,1000))
 
+
 #BART-------
 options(java.parameters="-Xmx100g")
+
 library('bartMachine')
 library('rJava')
 set_bart_machine_num_cores(20)
@@ -465,12 +542,23 @@ xtest <- df.test[,-c(1,9)]
 ytest <- df.test$PM2.5
 bart.pred<-bart_predict_for_test_data(bart_machine_cv, xtest, ytest)
 bart_predict_for_test_data(bart_machine_cv, xtest, ytest)$rmse
-investigate_var_importance(bart_machine_cv, num_replicates_for_avg = 20)
+investigate_var_importance(bart_machine_cv, num_replicates_for_avg = 20, cex = 1.2)
 plot_y_vs_yhat(bart_machine_cv, credible_intervals = TRUE)
 plot_y_vs_yhat(bart_machine_cv, prediction_intervals = TRUE)
 pd_plot(bart_machine_cv,j='BP')
-pd_plot(bart_machine_cv,j='TempN')
+pd_plot(bart_machine_cv,j='Events')
 pd_plot(bart_machine_cv,j='SR')
+for(i in pd){
+  print(i)
+  png(file=paste0(i,'_pd.png'), width= 10, height = 10, units = 'in', res = 300)
+  pd_plot(bart_machine_cv,j=i)
+  dev.off()
+  cat('\014')
+}
+pd
+pd<-pd[-8]
+pd<-pd['Events_2']
+
 cov_importance_test(bart_machine_cv,covariates = "Humid")
 cov_importance_test(bart_machine_cv,covariates = "Precip")
 cov_importance_test(bart_machine_cv,covariates = "RH")
@@ -517,9 +605,9 @@ legend("bottomright",legend=c("Model1_MARS","Model2_MARS"),col=c("blue","red"),p
 #So, Model1 is selected.
 
 #Prediction and rmseOS
-mars.model1.predict<-predict(mars.model1, df.mars.test)
-mars.model1.rmse<-rmse(mars.model1.predict,df.mars.test$PM2.5)
-mars.model1.rmse
+mars.model2.predict<-predict(mars.model2, df.mars.test)
+mars.model2.rmse<-rmse(mars.model2.predict,df.mars.test$PM2.5)
+mars.model2.rmse
 
 
 ##MVTBoost----
@@ -583,6 +671,71 @@ svm.model1.rmse
 #Final Model Comparison
 rmsefinalcompare<-data.frame(glm.rmse,gam.rmse,tree.model1.rmse,rf.rmse,
                              bart_predict_for_test_data(bart_machine_cv, xtest, ytest)$rmse,
-                             mars.model1.rmse,svm.model1.rmse)
+                             mars.model2.rmse,svm.model1.rmse)
 colnames(rmsefinalcompare)<-c("rmse_GLM","rmse_GAM","rmse_Tree","rmse_RF","rmse_BART","rmse_MARS","rmse_SVM")
 rmsefinalcompare
+
+
+
+##NeuralNet
+
+
+##Parallel
+applyKernel <- function(newX, FUN, d2, d.call, dn.call=NULL, ...) {
+  
+  foreach(i= 1:d2)%dopar% 
+  FUN(array(newX[,i], d.call, dn.call), ...)
+    
+}
+           
+            
+
+applyKernel(randomForest(x,y,ntree=ntree,na.action=na.omit),50,20)
+?iblkcol
+
+
+
+
+library(doParallel)
+registerDoParallel(cores=20)
+library(foreach)
+library(randomForest)
+
+folds <- 10
+temp$folds <- sample(seq(1:folds),size=nrow(temp),replace=T)
+temp<-na.omit(temp)
+error.df <- data.frame(rmseOS=numeric(folds))
+for(i in (1:folds)){
+  # start a for loop
+  set.seed(9)
+  temp.test<- temp[which(temp$folds==i),]
+  temp.train <-temp[-which(temp$folds==i),]
+  #rf<-randomForest(PM2.5~.,data=temp.train)
+  rf <- foreach(ntree=rep(250,4), .combine=combine,.packages = 'randomForest') %dopar% randomForest(PM2.5~. -Date ,ntree=ntree,na.action=na.omit, data= df.train)
+  rf.pred.OS<-predict(rf,temp.test)
+  error.df$rmseOS[i] <-rmse(actual = temp.test$PM2.5,predicted = rf.pred.OS)
+  }
+error.df$rmseOS
+
+require(randomForest)
+varImpPlot(rf,sort =TRUE, n.var=min(20, if(is.null(dim(rf$importance)))
+  length(rf$importance) else nrow(rf$importance)))
+
+#Data Visulaization
+summary(df$PM2.5)
+x<-df$PM2.5
+h<-hist(x, col="red", xlab="PM2.5",breaks = 200,xlim = c(0,500),
+        main="Histogram with Normal Curve")
+xfit<-seq(min(x),max(x),length=80)
+yfit<-dnorm(xfit,mean=mean(x),sd=sd(x))
+yfit <- yfit*diff(h$mids[1:2])*length(x)
+lines(xfit, yfit, col="blue", lwd=2) 
+
+d<-density(df$PM2.5)
+plot(d, xlim = c(-10,1000), main = 'Kernel Density of PM2.5')
+polygon(d, col="red", border="blue") 
+
+
+p<-ggplot(df, aes(Station,PM2.5))
+p+geom_boxplot(adjust = 0.8,aes(fill = Station))+ylim(-10,500)
+
